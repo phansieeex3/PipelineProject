@@ -1,9 +1,10 @@
 /*
 TCSS372 - Computer Architecture
-Problem #4
+Project LC3 
 Group Members: 
 Shaun Coleman
 Phansa Chaonpoj
+Joshua Meigs
 */
 
 #include "slc3_ui.h"

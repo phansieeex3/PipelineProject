@@ -1,9 +1,10 @@
 /*
 TCSS372 - Computer Architecture
-Problem #4
+Project LC3 
 Group Members: 
 Shaun Coleman
 Phansa Chaonpoj
+Joshua Meigs
 */
 
 #include <stdio.h>
@@ -37,6 +38,7 @@ Phansa Chaonpoj
 #define JSR 4 // and JSRR
 #define STR 7
 #define LDR 6
+#define RSV 13 //reserve :D
 
 // Macros to get IR bit fields
 #define OPCODE(instr)  (instr >> 12 & 0x000F)
