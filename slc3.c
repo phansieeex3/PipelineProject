@@ -311,7 +311,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         break;
                     case RSV:
                         //using base register. 
-                         cpu->mar = cpu->reg_file[Rs1]; 
+                        cpu->mar = cpu->reg_file[Rd]; 
                          //destination register is always r6
                          
 
@@ -428,17 +428,22 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                     case RSV:
                         if(IMMBIT(cpu->ir))//if 1, push case
                         {
-                            cpu->mdr = memory[cpu->reg_file[Rd]]--; //make room on the stack R6
+							cpu->mar--;
+                            cpu->mdr = cpu->reg_file[Rs1]; //make room on the stack R6
                             //memory[r6] <- Br
-                            memory[cpu->reg_file[Rd]] = cpu->reg_file[Rd];//push item on stack
-                            
+                            memory[cpu->mar] = cpu->mdr;//push item on stack
+                            cpu->reg_file[Rd] = cpu->mar; 
 
                         }
                         else //pop case
                         {
                             //Br <- memory[r6]
-                            cpu->reg_file[Rs1] = memory[cpu->reg_file[Rd]];
-                            cpu->mdr = memory[cpu->reg_file[Rd]]++; //pop off stack.     
+							cpu->mdr = memory[cpu->reg_file[Rs1]];
+							cpu->mar++;                 
+                            //cpu->mdr = memory[cpu->reg_file[Rs1]]; //pop off stack.     
+							
+							 cpu->reg_file[Rd] = cpu->mar;
+							//cpu->reg_file[Rd] = memory[cpu->reg_file[Rs1]];
 
                         }
                         break;		
