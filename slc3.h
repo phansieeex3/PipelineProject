@@ -72,6 +72,17 @@ Joshua Meigs
 #define SINGLE_CHAR 1
 #define NULL_CPU_POINTER -1
 #define NULL_MEMORY_POINTER -2
+#define MEM_CENTERED_OFFSET 7
+
+// Menu Options
+#define LOAD '1'
+#define SAVE '2'
+#define STEP '3'
+#define RUN  '4'
+#define DISPLAY_MEM '5'
+#define EDIT '6'
+#define BREAKPOINT '8'
+#define EXIT '9'
 
 
 // Condition Codes

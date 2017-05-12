@@ -107,7 +107,8 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 	short orig = DEFAULT_MEM_ADDRESS;
 	
     for (;;) {   // efficient endless loop
-	 char input[INPUT_LIMIT];    
+	 char input[INPUT_LIMIT];
+     char inputAddress[INPUT_LIMIT];	 
 	 			
 		switch (state) {
             case FETCH: // microstates 18, 33, 35 in the book    
@@ -121,7 +122,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 					 // Evaluate User Input
 					 if (strlen(input) == SINGLE_CHAR) {
 						 switch (input[MENU_SELECTION]) {
-							 case '1':
+							 case LOAD:
 								promptUser(win, "File Name: ",input); 	
 								programLoaded = loadFile(input, cpu);
 								if (programLoaded) {								
@@ -137,7 +138,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 										  displayBoldMessage(win, "Error: Invalid File. Press any key to continue.");
 									}								
 								 break;
-							 case '3':
+							 case STEP:
 								 if(!programLoaded) {
 									displayBoldMessage(win, "No program loaded! Press any key to continue."); 
 								 } else {								  
@@ -146,7 +147,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 								 }
 								 
 								 break;
-							 case '4':
+							 case RUN:
 						         if(!programLoaded) {
 									displayBoldMessage(win, "No program loaded! Press any key to continue."); 
 								 } else {								  
@@ -156,21 +157,56 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 								 }
 								 
 								 break;
-							 case '5':
+							 case DISPLAY_MEM:
 							    clearPrompt(win);
-								promptUser(win, "Starting Address: ",input);
+								promptUser(win, "Starting Address: ",inputAddress);
                                 clearPrompt(win);
 								
-								if (strlen(input) > EXPECTED_HEX_DIGITS || input[strspn(input, "0123456789abcdefABCDEF")] != 0) {
+								if (strlen(inputAddress) > EXPECTED_HEX_DIGITS || inputAddress[strspn(inputAddress, "0123456789abcdefABCDEF")] != 0) {
 									displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
 								}  else {
-								    displayMemAddress = strtol(input, &temp, HEX_MODE);
+								    displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
 									win->memAddress = displayMemAddress;
 									updateScreen(win, cpu, memory, programLoaded);
 									continue;
 								}								
 								break;
-							 case '9':
+							 case EDIT:
+							    // Prompt for Address to edit
+								clearPrompt(win);
+								promptUser(win, "Address to Edit: ",inputAddress);
+                                clearPrompt(win);
+								
+								// Validate address
+								if (strlen(inputAddress) > EXPECTED_HEX_DIGITS || inputAddress[strspn(inputAddress, "0123456789abcdefABCDEF")] != 0) {
+									displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
+									continue;
+								}
+								
+								// Prompt for new value to place into memory
+								clearPrompt(win);
+								promptUser(win, "New Value: ",input);
+                                clearPrompt(win);
+								
+								//Validate value
+								if (strlen(input) > EXPECTED_HEX_DIGITS || input[strspn(input, "0123456789abcdefABCDEF")] != 0) {
+									displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
+									continue;
+								}
+								
+								// Update Memory
+								displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
+								memory[displayMemAddress] = strtol(input, &temp, HEX_MODE);
+
+                                // Update Memory display								
+								displayMemAddress = (displayMemAddress >= MEM_CENTERED_OFFSET) ? displayMemAddress - MEM_CENTERED_OFFSET : 0; 
+								win->memAddress = displayMemAddress;
+								
+								// Update screen to reflect changes
+								updateScreen(win, cpu, memory, programLoaded);
+																
+								break;
+							 case EXIT:
 								 mvwprintw(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X, "Exit Selected! Press any key to continue.");
 								 wgetch(win->mainWin);
 								 return 0;

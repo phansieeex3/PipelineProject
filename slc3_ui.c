@@ -32,7 +32,8 @@ void printLabels(DEBUG_WIN_p win) {
 	 mvwprintw(win->mainWin, P_LABEL_Y_X, "P:");
 	 
 	 // Menu
-	 mvwprintw(win->mainWin, MENU_Y_X, "Select: 1) Load, 3) Step, 4) Run, 5) Display Mem, 9) Exit");
+	 mvwprintw(win->mainWin, MENU1_Y_X, "Select: 1) Load, 2) Save, 3) Step, 4) Run, 5) Display Mem");
+     mvwprintw(win->mainWin, MENU2_Y_X,         "6) Edit, 8)(Un)Set Brkpt,  9) Exit");
 
 	 // Prompt
 	 mvwprintw(win->mainWin, PROMPT_Y_X, "> ");

@@ -12,7 +12,7 @@ Joshua Meigs
 #include "slc3.h"
 
 #define WIN_WIDTH 70
-#define MAIN_WIN_HEIGHT 21
+#define MAIN_WIN_HEIGHT 22
 #define IO_WIN_HEIGHT 7
 #define MAIN_WIN_START_POS 0, 0
 #define IO_WIN_START_POS 21, 0
@@ -57,9 +57,10 @@ Joshua Meigs
 #define P_LABEL_Y_X 16,28
 #define P_VAL_Y_X 16,31
 
-#define MENU_Y_X 18,1
-#define PROMPT_Y_X 19,1
-#define PROMPT_DISPLAY_Y 19
+#define MENU1_Y_X 18,1
+#define MENU2_Y_X 19,9
+#define PROMPT_Y_X 20,1
+#define PROMPT_DISPLAY_Y 20
 #define PROMPT_DISPLAY_X 3
 
 #define IO_TITLE_Y_X 0, 30
