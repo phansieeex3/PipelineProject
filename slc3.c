@@ -122,32 +122,35 @@ void promptSaveToFile(unsigned char *memory, CPU_p cpu, char *input, char * star
 
         char prompt[INPUT_LIMIT];
 
-        if(file!= NULL) //if file exists
-        {
-             fclose(file);
+        do {
+            fclose(file);
             clearPrompt(win);
-            promptUser(win, "This file already exists, do you want to overwrite? \n Y/N \n", prompt);
-            if(prompt[0] == 'Y' ||prompt[0] == 'y' ) //ignore case
-            {
-                saveToFile(input, memory, start, end);
-            }
-            else if(input[0] == 'N' || input[0] == 'n')
-            {
-                clearPrompt(win);
+            if(file != NULL) {
+                promptUser(win, "This file already exists, do you want to overwrite? \n Y/N \n", prompt);
+                if(prompt[0] == 'Y' ||prompt[0] == 'y' ) //ignore case
+                {
+                    saveToFile(input, memory, start, end);
+                    break;
+                }
+                else if(prompt[0] == 'N' || prompt[0] == 'n')
+                {
+                    clearPrompt(win);
+                    promptUser(win, "Enter new file name: ", input);
+                    file = fopen(input, "r");
+                    fclose(file);
+                    //saveToFile(input, memory,  start, end); 
 
-                promptUser(win, "Enter new file name: ", input);
-                //save to file.
-                saveToFile(input, memory,  start, end);
-                
+                }
+                else 
+                {
+                    displayBoldMessage(win, "invalid response! Cancelling.");
+                    return ;
+                }
+            }
+            
+        } while(file!=NULL);
 
-            }
-            else 
-            {
-                displayBoldMessage(win, "invalid response! Cancelling.");
-                return ;
-            }
-        }
-        else if(file == NULL){ //save to file.
+        if(file == NULL){ //save to file.
             saveToFile(input, memory,  start, end);   
 
         }
