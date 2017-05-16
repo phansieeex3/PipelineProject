@@ -90,7 +90,7 @@ char loadFile(char * theInFile, CPU_p cpu) {
 	return loadFileIntoMemory(inFile, cpu);
 }
 
-void saveToFile(char * fileName, unsigned short *memory, char * start, char * end){
+void saveToFile(char * fileName, char * start, char * end){
 
     FILE * file = fopen(fileName, "w+");
     
@@ -111,7 +111,7 @@ void saveToFile(char * fileName, unsigned short *memory, char * start, char * en
 
 }
 
-void promptSaveToFile(unsigned char *memory, CPU_p cpu, char *input, char * start, char * end, DEBUG_WIN_p win)
+void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end, DEBUG_WIN_p win)
 {
        
         char * filename = input; //saving input.
@@ -129,7 +129,7 @@ void promptSaveToFile(unsigned char *memory, CPU_p cpu, char *input, char * star
                 promptUser(win, "This file already exists, do you want to overwrite? \n Y/N \n", prompt);
                 if(prompt[0] == 'Y' ||prompt[0] == 'y' ) //ignore case
                 {
-                    saveToFile(input, memory, start, end);
+                    saveToFile(input, start, end);
                     break;
                 }
                 else if(prompt[0] == 'N' || prompt[0] == 'n')
@@ -151,7 +151,7 @@ void promptSaveToFile(unsigned char *memory, CPU_p cpu, char *input, char * star
         } while(file!=NULL);
 
         if(file == NULL){ //save to file.
-            saveToFile(input, memory,  start, end);   
+            saveToFile(input,  start, end);   
 
         }
 
@@ -249,7 +249,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 
                                  promptUser(win, "File name: ", input);
 
-                                 promptSaveToFile(memory, cpu, input, startAddress, endAddress, win);
+                                 promptSaveToFile(cpu, input, startAddress, endAddress, win);
                           
                                  displayBoldMessage(win, "Succesfull, New data saved to file.");
 
