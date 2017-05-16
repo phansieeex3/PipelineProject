@@ -90,6 +90,82 @@ char loadFile(char * theInFile, CPU_p cpu) {
     return loadFileIntoMemory(inFile, cpu);
 }
 
+void saveToFile(char * fileName, unsigned short *memory, char * start, char * end){
+
+    FILE * file = fopen(fileName, "w+");
+    
+    char * temp1;
+    char * temp2;
+    int i = strtol(start, &temp1, HEX_MODE);
+    
+    for( ; i <= strtol(end, &temp2, HEX_MODE) ; i++)
+    {
+        fprintf(file, "%04X\r\n", memory[i]);
+
+
+    }
+
+    fclose(file);
+
+  
+
+}
+
+void promptSaveToFile(unsigned char *memory, CPU_p cpu, char *input, char * start, char * end, DEBUG_WIN_p win)
+{
+       
+        char * filename = input; //saving input.
+
+        //checking if file is empty.
+        FILE * file;
+        file = fopen(input, "r"); //file must exist or else it's NULL.
+
+        char prompt[INPUT_LIMIT];
+
+        do {
+            fclose(file);
+            clearPrompt(win);
+            if(file != NULL) {
+                promptUser(win, "This file already exists, do you want to overwrite? \n Y/N \n", prompt);
+                if(prompt[0] == 'Y' ||prompt[0] == 'y' ) //ignore case
+                {
+                    saveToFile(input, memory, start, end);
+                    break;
+                }
+                else if(prompt[0] == 'N' || prompt[0] == 'n')
+                {
+                    clearPrompt(win);
+                    promptUser(win, "Enter new file name: ", input);
+                    file = fopen(input, "r");
+                    fclose(file);
+                    //saveToFile(input, memory,  start, end); 
+
+                }
+                else 
+                {
+                    displayBoldMessage(win, "invalid response! Cancelling.");
+                    return ;
+                }
+            }
+            
+        } while(file!=NULL);
+
+        if(file == NULL){ //save to file.
+            saveToFile(input, memory,  start, end);   
+
+        }
+
+        fclose(file);
+   
+}
+
+
+//helper method.... 
+int contains(char * string, char target)
+{
+
+}
+
 int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     // check to make sure both pointers are not NULLS
     if (!cpu) return NULL_CPU_POINTER;
@@ -107,10 +183,14 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     short orig = DEFAULT_MEM_ADDRESS;
     
     for (;;) {   // efficient endless loop
-     char input[INPUT_LIMIT];
-     char inputAddress[INPUT_LIMIT];     
-                 
-        switch (state) {
+	 char input[INPUT_LIMIT];
+     char inputAddress[INPUT_LIMIT];	 
+
+     //for save case.
+     char startAddress[INPUT_LIMIT];
+     char endAddress[INPUT_LIMIT];
+	 			
+		switch (state) {
             case FETCH: // microstates 18, 33, 35 in the book    
                  do {
                     if (programRunning) break;
@@ -132,47 +212,70 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                                     printIoLabels(win);
                                     clearPrompt(win);
                                     clearIOWin(win);
-                                    displayBoldMessage(win, "Load Successful!");    
-                                    } else {
-                                          clearPrompt(win);
-                                          displayBoldMessage(win, "Error: Invalid File. Press any key to continue.");
-                                    }                                
-                                 break;
-                             case STEP:
-                                 if(!programLoaded) {
-                                    displayBoldMessage(win, "No program loaded! Press any key to continue."); 
-                                 } else {                                  
-                                    readyToLeave = true;
-                                    continue;
-                                 }
-                                 
-                                 break;
-                             case RUN:
-                                 if(!programLoaded) {
-                                    displayBoldMessage(win, "No program loaded! Press any key to continue."); 
-                                 } else {                                  
-                                    readyToLeave = true;
-                                    programRunning = true;
-                                    continue;
-                                 }
-                                 
-                                 break;
-                             case DISPLAY_MEM:
+									displayBoldMessage(win, "Load Successful!");	
+									} else {
+										  clearPrompt(win);
+										  displayBoldMessage(win, "Error: Invalid File. Press any key to continue.");
+									}								
+								 break;
+
+                            case SAVE:
+                                // Prompt for start address
+                                
                                 clearPrompt(win);
-                                promptUser(win, "Starting Address: ",inputAddress);
+                                promptUser(win, "Start Address: ",startAddress);
                                 clearPrompt(win);
                                 
-                                if (strlen(inputAddress) > EXPECTED_HEX_DIGITS || inputAddress[strspn(inputAddress, "0123456789abcdefABCDEF")] != 0) {
+                                // Validate address
+                                if (strlen(startAddress) > EXPECTED_HEX_DIGITS || startAddress[strspn(startAddress, "0123456789abcdefABCDEF")] != 0) {
                                     displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
-                                }  else {
-                                    displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
-                                    win->memAddress = displayMemAddress;
-                                    updateScreen(win, cpu, memory, programLoaded);
                                     continue;
-                                }                                
-                                break;
-                             case EDIT:
-                                // Prompt for Address to edit
+                                }
+
+                                char *tempStart = inputAddress;
+                                
+                                // Prompt for end address (inclusive)
+                                clearPrompt(win);
+                                promptUser(win, "End Address: ",endAddress);
+                                clearPrompt(win);
+                                
+                                //Validate value
+                                if (strlen(endAddress) > EXPECTED_HEX_DIGITS || endAddress[strspn(endAddress, "0123456789abcdefABCDEF")] != 0) {
+                                    displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
+                                    continue;
+                                }
+
+                                char *tempEnd = input;
+
+                                 promptUser(win, "File name: ", input);
+
+                                 promptSaveToFile(memory, cpu, input, startAddress, endAddress, win);
+                          
+                                 displayBoldMessage(win, "Succesfull, New data saved to file.");
+
+                                 break;
+							 case STEP:
+								 if(!programLoaded) {
+									displayBoldMessage(win, "No program loaded! Press any key to continue."); 
+								 } else {								  
+									readyToLeave = true;
+									continue;
+								 }
+								 
+								 break;
+							 case RUN:
+						         if(!programLoaded) {
+									displayBoldMessage(win, "No program loaded! Press any key to continue."); 
+								 } else {								  
+									readyToLeave = true;
+									programRunning = true;
+									continue;
+								 }
+								 
+								 break;
+							 case DISPLAY_MEM:
+							    clearPrompt(win);
+								promptUser(win, "Starting Address: ",inputAddress);
                                 clearPrompt(win);
                                 promptUser(win, "Address to Edit: ",inputAddress);
                                 clearPrompt(win);
@@ -311,7 +414,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         break;
                     case RSV:
                         //using base register. 
-                         cpu->mar = cpu->reg_file[Rs1]; 
+                        cpu->mar = cpu->reg_file[Rd]; 
                          //destination register is always r6
                          
 
@@ -428,17 +531,22 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                     case RSV:
                         if(IMMBIT(cpu->ir))//if 1, push case
                         {
-                            cpu->mdr = memory[cpu->reg_file[Rd]]--; //make room on the stack R6
+							cpu->mar--;
+                            cpu->mdr = cpu->reg_file[Rs1]; //make room on the stack R6
                             //memory[r6] <- Br
-                            memory[cpu->reg_file[Rd]] = cpu->reg_file[Rd];//push item on stack
-                            
+                            memory[cpu->mar] = cpu->mdr;//push item on stack
+                            cpu->reg_file[Rd] = cpu->mar; 
 
                         }
                         else //pop case
                         {
                             //Br <- memory[r6]
-                            cpu->reg_file[Rs1] = memory[cpu->reg_file[Rd]];
-                            cpu->mdr = memory[cpu->reg_file[Rd]]++; //pop off stack.     
+							cpu->mdr = memory[cpu->reg_file[Rs1]];
+							cpu->mar++;                 
+                            //cpu->mdr = memory[cpu->reg_file[Rs1]]; //pop off stack.     
+							
+							 cpu->reg_file[Rd] = cpu->mar;
+							//cpu->reg_file[Rd] = memory[cpu->reg_file[Rs1]];
 
                         }
                         break;        
