@@ -32,62 +32,62 @@ void updateConCodes(CPU_p cpu, short val) {
 // Evaluates the trapVector and performs the appropriate action
 // Returns 1 for a halt command, 0 otherwise
 int trap(CPU_p cpu, DEBUG_WIN_p win) {
-	 int i = 0;
-	 switch(cpu->mar) {
+     int i = 0;
+     switch(cpu->mar) {
         case GETCH:
-			cpu->reg_file[IO_REG] = mvwgetch(win->ioWin, win->ioY, win->ioX);
-			break;
-		case OUT:
-		    writeCharToIOWin(win, cpu->reg_file[IO_REG]);
-			break;
-		case PUTS:
-		    while(memory[cpu->reg_file[IO_REG]+i]) {
-				writeCharToIOWin(win, memory[cpu->reg_file[IO_REG]+i]);
-				i++;
-			}
-			break;
-		case HALT:
+            cpu->reg_file[IO_REG] = mvwgetch(win->ioWin, win->ioY, win->ioX);
+            break;
+        case OUT:
+            writeCharToIOWin(win, cpu->reg_file[IO_REG]);
+            break;
+        case PUTS:
+            while(memory[cpu->reg_file[IO_REG]+i]) {
+                writeCharToIOWin(win, memory[cpu->reg_file[IO_REG]+i]);
+                i++;
+            }
+            break;
+        case HALT:
            return true;
         default:
            break;
      }
      
-	 wrefresh(win->ioWin);
+     wrefresh(win->ioWin);
      return false;
 }
 
 // Loads a hex file into the memory of the controller
 
 char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
-	char * t;
-	int temp;
-	char line[MAX_INPUT_SIZE];
-	fscanf(theInFile, "%s", &line);
-	if (strlen(line) > EXPECTED_HEX_DIGITS || line[strspn(line, "0123456789abcdefABCDEF")] != 0) {
-	    return false;
-	}
-	cpu->pc = strtol(line, &t, HEX_MODE);
-	temp = cpu->pc;
-	while(!feof(theInFile)) {
-		fscanf(theInFile, "%s", &line);
-	    if (strlen(line) > EXPECTED_HEX_DIGITS || line[strspn(line, "0123456789abcdefABCDEF")] != 0) {
-	        return false;
-	    }  
-		memory[temp] = strtol(line, &t, HEX_MODE);
-		temp++;
-	}
-	
-	return true;
+    char * t;
+    int temp;
+    char line[MAX_INPUT_SIZE];
+    fscanf(theInFile, "%s", &line);
+    if (strlen(line) > EXPECTED_HEX_DIGITS || line[strspn(line, "0123456789abcdefABCDEF")] != 0) {
+        return false;
+    }
+    cpu->pc = strtol(line, &t, HEX_MODE);
+    temp = cpu->pc;
+    while(!feof(theInFile)) {
+        fscanf(theInFile, "%s", &line);
+        if (strlen(line) > EXPECTED_HEX_DIGITS || line[strspn(line, "0123456789abcdefABCDEF")] != 0) {
+            return false;
+        }  
+        memory[temp] = strtol(line, &t, HEX_MODE);
+        temp++;
+    }
+    
+    return true;
 }
 
 char loadFile(char * theInFile, CPU_p cpu) {
-	FILE * inFile =  fopen(theInFile,"r");
-	
-	if(!inFile) {
-		return false;
-	}	
+    FILE * inFile =  fopen(theInFile,"r");
+    
+    if(!inFile) {
+        return false;
+    }    
 
-	return loadFileIntoMemory(inFile, cpu);
+    return loadFileIntoMemory(inFile, cpu);
 }
 
 int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
@@ -97,143 +97,143 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     
     unsigned short opcode, Rd, Rs1, Rs2, immed9;    // fields for the IR
     unsigned short ben;
-	char *temp;
+    char *temp;
     short state = FETCH;
-	char* message;
-	char readyToLeave = false;
-	char programLoaded = false;
-	char programRunning = false;
-	int displayMemAddress = DEFAULT_MEM_ADDRESS;
-	short orig = DEFAULT_MEM_ADDRESS;
-	
+    char* message;
+    char readyToLeave = false;
+    char programLoaded = false;
+    char programRunning = false;
+    int displayMemAddress = DEFAULT_MEM_ADDRESS;
+    short orig = DEFAULT_MEM_ADDRESS;
+    
     for (;;) {   // efficient endless loop
-	 char input[INPUT_LIMIT];
-     char inputAddress[INPUT_LIMIT];	 
-	 			
-		switch (state) {
+     char input[INPUT_LIMIT];
+     char inputAddress[INPUT_LIMIT];     
+                 
+        switch (state) {
             case FETCH: // microstates 18, 33, 35 in the book    
-				 do {
-				    if (programRunning) break;
-					
-					readyToLeave = false;
-					updateScreen(win, cpu, memory, programLoaded);
-					promptUser(win, "",input); 
-					
-					 // Evaluate User Input
-					 if (strlen(input) == SINGLE_CHAR) {
-						 switch (input[MENU_SELECTION]) {
-							 case LOAD:
-								promptUser(win, "File Name: ",input); 	
-								programLoaded = loadFile(input, cpu);
-								if (programLoaded) {								
-									win->memAddress = cpu->pc;
-									orig = cpu->pc;
-									updateScreen(win, cpu, memory, programLoaded);
-									printIoLabels(win);
-									clearPrompt(win);
+                 do {
+                    if (programRunning) break;
+                    
+                    readyToLeave = false;
+                    updateScreen(win, cpu, memory, programLoaded);
+                    promptUser(win, "",input); 
+                    
+                     // Evaluate User Input
+                     if (strlen(input) == SINGLE_CHAR) {
+                         switch (input[MENU_SELECTION]) {
+                             case LOAD:
+                                promptUser(win, "File Name: ",input);     
+                                programLoaded = loadFile(input, cpu);
+                                if (programLoaded) {                                
+                                    win->memAddress = cpu->pc;
+                                    orig = cpu->pc;
+                                    updateScreen(win, cpu, memory, programLoaded);
+                                    printIoLabels(win);
+                                    clearPrompt(win);
                                     clearIOWin(win);
-									displayBoldMessage(win, "Load Successful!");	
-									} else {
-										  clearPrompt(win);
-										  displayBoldMessage(win, "Error: Invalid File. Press any key to continue.");
-									}								
-								 break;
-							 case STEP:
-								 if(!programLoaded) {
-									displayBoldMessage(win, "No program loaded! Press any key to continue."); 
-								 } else {								  
-									readyToLeave = true;
-									continue;
-								 }
-								 
-								 break;
-							 case RUN:
-						         if(!programLoaded) {
-									displayBoldMessage(win, "No program loaded! Press any key to continue."); 
-								 } else {								  
-									readyToLeave = true;
-									programRunning = true;
-									continue;
-								 }
-								 
-								 break;
-							 case DISPLAY_MEM:
-							    clearPrompt(win);
-								promptUser(win, "Starting Address: ",inputAddress);
+                                    displayBoldMessage(win, "Load Successful!");    
+                                    } else {
+                                          clearPrompt(win);
+                                          displayBoldMessage(win, "Error: Invalid File. Press any key to continue.");
+                                    }                                
+                                 break;
+                             case STEP:
+                                 if(!programLoaded) {
+                                    displayBoldMessage(win, "No program loaded! Press any key to continue."); 
+                                 } else {                                  
+                                    readyToLeave = true;
+                                    continue;
+                                 }
+                                 
+                                 break;
+                             case RUN:
+                                 if(!programLoaded) {
+                                    displayBoldMessage(win, "No program loaded! Press any key to continue."); 
+                                 } else {                                  
+                                    readyToLeave = true;
+                                    programRunning = true;
+                                    continue;
+                                 }
+                                 
+                                 break;
+                             case DISPLAY_MEM:
                                 clearPrompt(win);
-								
-								if (strlen(inputAddress) > EXPECTED_HEX_DIGITS || inputAddress[strspn(inputAddress, "0123456789abcdefABCDEF")] != 0) {
-									displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
-								}  else {
-								    displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
-									win->memAddress = displayMemAddress;
-									updateScreen(win, cpu, memory, programLoaded);
-									continue;
-								}								
-								break;
-							 case EDIT:
-							    // Prompt for Address to edit
-								clearPrompt(win);
-								promptUser(win, "Address to Edit: ",inputAddress);
+                                promptUser(win, "Starting Address: ",inputAddress);
                                 clearPrompt(win);
-								
-								// Validate address
-								if (strlen(inputAddress) > EXPECTED_HEX_DIGITS || inputAddress[strspn(inputAddress, "0123456789abcdefABCDEF")] != 0) {
-									displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
-									continue;
-								}
-								
-								// Prompt for new value to place into memory
-								clearPrompt(win);
-								promptUser(win, "New Value: ",input);
+                                
+                                if (strlen(inputAddress) > EXPECTED_HEX_DIGITS || inputAddress[strspn(inputAddress, "0123456789abcdefABCDEF")] != 0) {
+                                    displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
+                                }  else {
+                                    displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
+                                    win->memAddress = displayMemAddress;
+                                    updateScreen(win, cpu, memory, programLoaded);
+                                    continue;
+                                }                                
+                                break;
+                             case EDIT:
+                                // Prompt for Address to edit
                                 clearPrompt(win);
-								
-								//Validate value
-								if (strlen(input) > EXPECTED_HEX_DIGITS || input[strspn(input, "0123456789abcdefABCDEF")] != 0) {
-									displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
-									continue;
-								}
-								
-								// Update Memory
-								displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
-								memory[displayMemAddress] = strtol(input, &temp, HEX_MODE);
+                                promptUser(win, "Address to Edit: ",inputAddress);
+                                clearPrompt(win);
+                                
+                                // Validate address
+                                if (strlen(inputAddress) > EXPECTED_HEX_DIGITS || inputAddress[strspn(inputAddress, "0123456789abcdefABCDEF")] != 0) {
+                                    displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
+                                    continue;
+                                }
+                                
+                                // Prompt for new value to place into memory
+                                clearPrompt(win);
+                                promptUser(win, "New Value: ",input);
+                                clearPrompt(win);
+                                
+                                // Validate value
+                                if (strlen(input) > EXPECTED_HEX_DIGITS || input[strspn(input, "0123456789abcdefABCDEF")] != 0) {
+                                    displayBoldMessage(win, "Error: Invalid Value. Press any key to continue.");
+                                    continue;
+                                }
+                                
+                                // Update Memory
+                                displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
+                                memory[displayMemAddress] = strtol(input, &temp, HEX_MODE);
 
-                                // Update Memory display								
-								displayMemAddress = (displayMemAddress >= MEM_CENTERED_OFFSET) ? displayMemAddress - MEM_CENTERED_OFFSET : 0; 
-								win->memAddress = displayMemAddress;
-								
-								// Update screen to reflect changes
-								updateScreen(win, cpu, memory, programLoaded);
-																
-								break;
-							 case EXIT:
-								 mvwprintw(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X, "Exit Selected! Press any key to continue.");
-								 wgetch(win->mainWin);
-								 return 0;
-							 default:
-								 clearPrompt(win);
-								 displayBoldMessage(win, "Invalid Menu option!");
-						}
-					 } else {
-					     clearPrompt(win);
-						 displayBoldMessage(win, "Invalid Menu option!");
-					 }
-					 // Refresh Screen
-					 updateScreen(win, cpu, memory, programLoaded);
-					 
-					 // Pause
-					 mvwgetch(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X);
-					 input[MENU_SELECTION] = '-';
-										 
-					 clearPrompt(win);		 
-				} while (!readyToLeave || !programLoaded);
+                                // Update Memory display                                
+                                displayMemAddress = (displayMemAddress >= MEM_CENTERED_OFFSET) ? displayMemAddress - MEM_CENTERED_OFFSET : 0; 
+                                win->memAddress = displayMemAddress;
+                                
+                                // Update screen to reflect changes
+                                updateScreen(win, cpu, memory, programLoaded);
+                                                                
+                                break;
+                             case EXIT:
+                                 mvwprintw(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X, "Exit Selected! Press any key to continue.");
+                                 wgetch(win->mainWin);
+                                 return 0;
+                             default:
+                                 clearPrompt(win);
+                                 displayBoldMessage(win, "Invalid Menu option!");
+                        }
+                     } else {
+                         clearPrompt(win);
+                         displayBoldMessage(win, "Invalid Menu option!");
+                     }
+                     // Refresh Screen
+                     updateScreen(win, cpu, memory, programLoaded);
+                     
+                     // Pause
+                     mvwgetch(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X);
+                     input[MENU_SELECTION] = '-';
+                                         
+                     clearPrompt(win);         
+                } while (!readyToLeave || !programLoaded);
 
                 // get memory[PC] into IR - memory is a global array
                 cpu->mar = cpu->pc;
                 // increment PC
                 cpu->pc++;              
                 cpu->mdr = memory[cpu->mar];                
-                cpu->ir =cpu->mdr;               				
+                cpu->ir =cpu->mdr;                               
                state = DECODE;
                 break;
             case DECODE: // microstate 32
@@ -264,15 +264,15 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                     case LD:
                         cpu->mar = cpu->pc + immed9;
                         break;
-					case LDR:
-					    cpu->mar = cpu->reg_file[Rs1] + SEXTPCOFFSET6(cpu->ir);
-						break;
+                    case LDR:
+                        cpu->mar = cpu->reg_file[Rs1] + SEXTPCOFFSET6(cpu->ir);
+                        break;
                     case ST:
                         cpu->mar = cpu->pc + immed9;
                         break;
-					case STR:
-					    cpu->mar = cpu->reg_file[Rs1] + SEXTPCOFFSET6(cpu->ir);
-						break;
+                    case STR:
+                        cpu->mar = cpu->reg_file[Rs1] + SEXTPCOFFSET6(cpu->ir);
+                        break;
                     case JMP: // and RET
                         //if BaseR == 111
                         if(cpu->reg_file[Rs1] == RETURN_REG) //ret case
@@ -292,7 +292,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         break;
                     case JSR:
                         cpu->reg_file[RETURN_REG] = cpu->pc;
-						if(!NBIT(cpu->ir)) //check if JSRR incase if we implement JSR
+                        if(!NBIT(cpu->ir)) //check if JSRR incase if we implement JSR
                         {
                             //pc = baseR
                             cpu->pc = cpu->reg_file[Rs1]; 
@@ -352,11 +352,11 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         cpu->reg_file[RETURN_REG] = cpu->pc;
                         break;
                     case LD:
-					case LDR:
+                    case LDR:
                         cpu->mdr = memory[cpu->mar];
                         break;
                     case ST:
-					case STR:
+                    case STR:
                         cpu->mdr = cpu->reg_file[Rd];
                         break;
 
@@ -385,14 +385,14 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         case TRAP:
                             // Halt if trap function returns 1
                             if(trap(cpu, win)) {
-							   // end current program
-							   cpu->pc = orig;
+                               // end current program
+                               cpu->pc = orig;
                                state = FETCH;
-							   programLoaded = false;
-							   programRunning = false;
-							   displayBoldMessage(win, "Program HALT. Press any key to continue.");
-							   mvwgetch(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X);
-							   clearPrompt(win);
+                               programLoaded = false;
+                               programRunning = false;
+                               displayBoldMessage(win, "Program HALT. Press any key to continue.");
+                               mvwgetch(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X);
+                               clearPrompt(win);
                             }
                         break;
 
@@ -414,7 +414,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         updateConCodes(cpu, cpu->reg_file[Rd]);
                         break;
                     case LD:
-					case LDR:
+                    case LDR:
                         cpu->reg_file[Rd] = cpu->mdr;
                         updateConCodes(cpu, cpu->reg_file[Rd]);
                         break;
@@ -422,7 +422,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         memory[cpu->mar] = cpu->mdr;
                         break; 
                     case STR:
-                        memory[cpu->mar] = cpu->mdr;	
+                        memory[cpu->mar] = cpu->mdr;    
                         break;
 
                     case RSV:
@@ -441,7 +441,7 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                             cpu->mdr = memory[cpu->reg_file[Rd]]++; //pop off stack.     
 
                         }
-                        break;		
+                        break;        
                 }
                 
                 // do any clean up here in prep for the next complete cycle
@@ -451,21 +451,72 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     }
 }
 
+void monitor(CPU_p cpu, DEBUG_WIN_p win) {
+    // prep
+	// main do/while loop
+	    // prompt user
+		// Menu Switch
+		// Step/run call controller_pipeline(cpu, mode, breakpoints) mode: STEP, RUN
+		// load/edit/save/display/breakpoint calls appropriate funtion
+	
+		
+    
+}
+
+int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
+      // main controller for pipelines
+	  
+	  // Note: Simulate memory with 10 cycles of access time
+	  // Need to handle RAWs with stalls/NOPs
+	  // Need to handle branch hazards with not taken prediction and pipeline flushing
+	 
+	  // do/while not halt or not breakpoint or not step finished(still need to deal with mem cycles, so @ next PC)
+		  // Prefetch (handle instruction prefetch)
+		  
+		  // Store
+		     
+		  // Memory
+		       // check: is Stalled? push nop forward and restart loop
+			   // call function to contains switch to handle each OP during this step
+			   
+		  // Execute
+	 	      // check: is Stalled? push nop forward and restart loop
+		      // call function to contains switch to handle each OP during this step
+			  
+			  // Branch taken?
+			     // Flush pipeline(DBUFF, FBUFF set to NOP)
+				 // Update current PC for fetch
+				 // reset instruction prefetch queue?
+			  
+		  // Decode/Reg
+			  // check: is Stalled? push nop forward and restart loop
+		      // call function to contains switch to handle each OP during this step
+			  
+			  // RAW detected (DR = prev Sr1 or Sr2)?
+			     // Stall (3 NOPs) (counter that adds NOPs to DBUFF 3 cycles in a row)
+			  
+		  // Fetch
+		      // check: is Stalled? push nop forward and restart loop
+			  // call function to contains switch to handle each OP during this step
+			  
+	// return reason for stopping (HALTED, BREAKPOINT, STEP_FINISHED)
+}
+
 int main(int argc, char* argv[]) {
     char *temp;
 
-	// initialize resources
+    // initialize resources
     CPU_p cpu = (CPU_p)malloc(sizeof(CPU_s));
-	DEBUG_WIN_p win = (DEBUG_WIN_p)malloc(sizeof(DEBUG_WIN_s));
+    DEBUG_WIN_p win = (DEBUG_WIN_p)malloc(sizeof(DEBUG_WIN_s));
     initializeWindows(win);
-	
-	// print
-	reprintScreen(win, cpu ,memory, false);
-	
-	controller(cpu, win);
+    
+    // print
+    reprintScreen(win, cpu ,memory, false);
+    
+    controller(cpu, win);
 
-	// free resources
+    // free resources
     endWindows(win);
-	free(win);
+    free(win);
     free(cpu);
 }
