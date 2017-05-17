@@ -90,6 +90,77 @@ char loadFile(char * theInFile, CPU_p cpu) {
     return loadFileIntoMemory(inFile, cpu);
 }
 
+void saveToFile(char * fileName, char * start, char * end){
+
+    FILE * file = fopen(fileName, "w+");
+    
+    char * temp1;
+    char * temp2;
+    int i = strtol(start, &temp1, HEX_MODE);
+    
+    for( ; i <= strtol(end, &temp2, HEX_MODE) ; i++)
+    {
+        fprintf(file, "%04X\r\n", memory[i]);
+
+
+    }
+
+    fclose(file);
+
+  
+
+
+}
+
+void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end, DEBUG_WIN_p win)
+{
+       
+        char * filename = input; //saving input.
+
+        //checking if file is empty.
+        FILE * file;
+        file = fopen(input, "r"); //file must exist or else it's NULL.
+
+        char prompt[INPUT_LIMIT];
+
+        do {
+            fclose(file);
+            clearPrompt(win);
+            if(file != NULL) {
+                promptUser(win, "This file already exists, do you want to overwrite? \n Y/N \n", prompt);
+                if(prompt[0] == 'Y' ||prompt[0] == 'y' ) //ignore case
+                {
+                    saveToFile(input, start, end);
+                    break;
+                }
+                else if(prompt[0] == 'N' || prompt[0] == 'n')
+                {
+                    clearPrompt(win);
+                    promptUser(win, "Enter new file name: ", input);
+                    file = fopen(input, "r");
+                    fclose(file);
+                    //saveToFile(input, memory,  start, end); 
+
+                }
+                else 
+                {
+                    displayBoldMessage(win, "invalid response! Cancelling.");
+                    return ;
+                }
+            }
+            
+        } while(file!=NULL);
+
+        if(file == NULL){ //save to file.
+            saveToFile(input,  start, end);   
+
+        }
+
+        fclose(file);
+   
+}
+
+
 int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     // check to make sure both pointers are not NULLS
     if (!cpu) return NULL_CPU_POINTER;
@@ -109,6 +180,10 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     for (;;) {   // efficient endless loop
      char input[INPUT_LIMIT];
      char inputAddress[INPUT_LIMIT];     
+
+     //for save option
+     char startAddress[INPUT_LIMIT];
+     char endAddress[INPUT_LIMIT];   
                  
         switch (state) {
             case FETCH: // microstates 18, 33, 35 in the book    
@@ -138,6 +213,44 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                                           displayBoldMessage(win, "Error: Invalid File. Press any key to continue.");
                                     }                                
                                  break;
+
+                             case SAVE:
+                             // Prompt for start address
+                                
+                                clearPrompt(win);
+                                promptUser(win, "Start Address: ",startAddress);
+                                clearPrompt(win);
+                                
+                                // Validate address
+                                if (strlen(startAddress) > EXPECTED_HEX_DIGITS || startAddress[strspn(startAddress, "0123456789abcdefABCDEF")] != 0) {
+                                    displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
+                                    continue;
+                                }
+
+                                char *tempStart = inputAddress;
+                                
+                                // Prompt for end address (inclusive)
+                                clearPrompt(win);
+                                promptUser(win, "End Address: ",endAddress);
+                                clearPrompt(win);
+                                
+                                //Validate value
+                                if (strlen(endAddress) > EXPECTED_HEX_DIGITS || endAddress[strspn(endAddress, "0123456789abcdefABCDEF")] != 0) {
+                                    displayBoldMessage(win, "Error: Invalid address. Press any key to continue.");
+                                    continue;
+                                }
+
+                                char *tempEnd = input;
+
+                                 promptUser(win, "File name: ", input);
+
+                                 promptSaveToFile(cpu, input, startAddress, endAddress, win);
+                          
+                                 displayBoldMessage(win, "Succesfull, New data saved to file.");
+
+                                 break;
+
+
                              case STEP:
                                  if(!programLoaded) {
                                     displayBoldMessage(win, "No program loaded! Press any key to continue."); 
