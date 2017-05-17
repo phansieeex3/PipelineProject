@@ -95,23 +95,23 @@ typedef struct {
 } CC_s;
 
 typedef struct {
-	Register ir;
-	Register pc;
+    Register ir;
+    Register pc;
 } FBUFF_s;
 
 typedef struct {
-	Register op;
-	Register dr;
-	Register opn1;
-	Register opn2;
-	Register pc;
+    Register op;
+    Register dr;
+    Register opn1;
+    Register opn2;
+    Register pc;
 } DBUFF_s;
 
 typedef struct {
-	Register op;
-	Register dr;
-	Register result;
-	Register pc;
+    Register op;
+    Register dr;
+    Register result;
+    Register pc;
 } EMBUFF_s;
 
 typedef struct {
@@ -119,11 +119,11 @@ typedef struct {
     Register mar, mdr, ir, pc;
     Register alu_a, alu_b, alu_r;
     CC_s conCodes;
-	Register dr_store;
-	FBUFF_s fbuff;
-	DBUFF_s dbuff;
-	EMBUFF_s ebuff;
-	EMBUFF_s mbuff;
+    Register dr_store;
+    FBUFF_s fbuff;
+    DBUFF_s dbuff;
+    EMBUFF_s ebuff;
+    EMBUFF_s mbuff;
 } CPU_s;
 
 typedef CPU_s* CPU_p;

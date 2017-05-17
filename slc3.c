@@ -566,53 +566,53 @@ int controller (CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 
 void monitor(CPU_p cpu, DEBUG_WIN_p win) {
     // prep
-	// main do/while loop
-	    // prompt user
-		// Menu Switch
-		// Step/run call controller_pipeline(cpu, mode, breakpoints) mode: STEP, RUN
-		// load/edit/save/display/breakpoint calls appropriate funtion
-	
-		
+    // main do/while loop
+        // prompt user
+        // Menu Switch
+        // Step/run call controller_pipeline(cpu, mode, breakpoints) mode: STEP, RUN
+        // load/edit/save/display/breakpoint calls appropriate funtion
+    
+        
     
 }
 
 int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
       // main controller for pipelines
-	  
-	  // Note: Simulate memory with 10 cycles of access time
-	  // Need to handle RAWs with stalls/NOPs
-	  // Need to handle branch hazards with not taken prediction and pipeline flushing
-	 
-	  // do/while not halt or not breakpoint or not step finished(still need to deal with mem cycles, so @ next PC)
-		  // Prefetch (handle instruction prefetch)
-		  
-		  // Store
-		     
-		  // Memory
-		       // check: is Stalled? push nop forward and restart loop
-			   // call function to contains switch to handle each OP during this step
-			   
-		  // Execute
-	 	      // check: is Stalled? push nop forward and restart loop
-		      // call function to contains switch to handle each OP during this step
-			  
-			  // Branch taken?
-			     // Flush pipeline(DBUFF, FBUFF set to NOP)
-				 // Update current PC for fetch
-				 // reset instruction prefetch queue?
-			  
-		  // Decode/Reg
-			  // check: is Stalled? push nop forward and restart loop
-		      // call function to contains switch to handle each OP during this step
-			  
-			  // RAW detected (DR = prev Sr1 or Sr2)?
-			     // Stall (3 NOPs) (counter that adds NOPs to DBUFF 3 cycles in a row)
-			  
-		  // Fetch
-		      // check: is Stalled? push nop forward and restart loop
-			  // call function to contains switch to handle each OP during this step
-			  
-	// return reason for stopping (HALTED, BREAKPOINT, STEP_FINISHED)
+      
+      // Note: Simulate memory with 10 cycles of access time
+      // Need to handle RAWs with stalls/NOPs
+      // Need to handle branch hazards with not taken prediction and pipeline flushing
+     
+      // do/while not halt or not breakpoint or not step finished(still need to deal with mem cycles, so @ next PC)
+          // Prefetch (handle instruction prefetch)
+          
+          // Store
+             
+          // Memory
+               // check: is Stalled? push nop forward and restart loop
+               // call function to contains switch to handle each OP during this step
+               
+          // Execute
+               // check: is Stalled? push nop forward and restart loop
+              // call function to contains switch to handle each OP during this step
+              
+              // Branch taken?
+                 // Flush pipeline(DBUFF, FBUFF set to NOP)
+                 // Update current PC for fetch
+                 // reset instruction prefetch queue?
+              
+          // Decode/Reg
+              // check: is Stalled? push nop forward and restart loop
+              // call function to contains switch to handle each OP during this step
+              
+              // RAW detected (DR = prev Sr1 or Sr2)?
+                 // Stall (3 NOPs) (counter that adds NOPs to DBUFF 3 cycles in a row)
+              
+          // Fetch
+              // check: is Stalled? push nop forward and restart loop
+              // call function to contains switch to handle each OP during this step
+              
+    // return reason for stopping (HALTED, BREAKPOINT, STEP_FINISHED)
 }
 
 int main(int argc, char* argv[]) {
