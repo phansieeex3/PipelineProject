@@ -84,6 +84,9 @@ Joshua Meigs
 #define BREAKPOINT '8'
 #define EXIT '9'
 
+#define STEP 0
+#define RUN 1
+
 typedef unsigned short Register;
 
 
