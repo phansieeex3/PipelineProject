@@ -85,7 +85,8 @@ Joshua Meigs
 #define EDIT '6'
 #define BREAKPOINT '8'
 #define EXIT '9'
-
+#define STEP 0
+#define RUN 1
 
 
 typedef struct {
@@ -95,6 +96,10 @@ typedef struct {
 } BREAKPOINT_s;
 
 typedef BREAKPOINT_s* BREAKPOINT_p;
+
+
+
+>>>>>>> origin/master
 typedef unsigned short Register;
 
 
