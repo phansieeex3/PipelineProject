@@ -84,19 +84,46 @@ Joshua Meigs
 #define BREAKPOINT '8'
 #define EXIT '9'
 
+typedef unsigned short Register;
+
 
 // Condition Codes
 typedef struct {
-  unsigned short n : 1;
-  unsigned short z : 1;
-  unsigned short p: 1;
+  Register n : 1;
+  Register z : 1;
+  Register p: 1;
 } CC_s;
 
 typedef struct {
-    unsigned short reg_file[REG_SIZE];
-    unsigned short mar, mdr, ir, pc;
-    unsigned short alu_a, alu_b, alu_r;
+	Register ir;
+	Register pc;
+} FBUFF_s;
+
+typedef struct {
+	Register op;
+	Register dr;
+	Register opn1;
+	Register opn2;
+	Register pc;
+} DBUFF_s;
+
+typedef struct {
+	Register op;
+	Register dr;
+	Register result;
+	Register pc;
+} EMBUFF_s;
+
+typedef struct {
+    Register reg_file[REG_SIZE];
+    Register mar, mdr, ir, pc;
+    Register alu_a, alu_b, alu_r;
     CC_s conCodes;
+	Register dr_store;
+	FBUFF_s fbuff;
+	DBUFF_s dbuff;
+	EMBUFF_s ebuff;
+	EMBUFF_s mbuff;
 } CPU_s;
 
 typedef CPU_s* CPU_p;
