@@ -73,6 +73,8 @@ Joshua Meigs
 #define NULL_CPU_POINTER -1
 #define NULL_MEMORY_POINTER -2
 #define MEM_CENTERED_OFFSET 7
+#define MAXBREAK 4
+#define NULL_BREAKPOINT -1
 
 // Menu Options
 #define LOAD '1'
@@ -95,8 +97,19 @@ Joshua Meigs
 #define RUN_MODE 1
 #define MAX_PREFETCH 8
 
+#define STEP_MODE 0
+#define RUN_MODE 1
+
+
 typedef unsigned short Register;
 
+typedef struct {
+    short emptySpaces : MAXBREAK;
+    Register breakPointArr[MAXBREAK];
+    
+} BREAKPOINT_s;
+
+typedef BREAKPOINT_s* BREAKPOINT_p;
 
 // Condition Codes
 typedef struct {

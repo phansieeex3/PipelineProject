@@ -155,6 +155,11 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
 
 }
 
+void addBreakPoint(BREAKPOINT_p breakpoints, char* inputAddress) {
+    
+}
+
+
 int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     // check to make sure both pointers are not NULLS
     if (!cpu)
@@ -172,7 +177,10 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     char programRunning = false;
     int displayMemAddress = DEFAULT_MEM_ADDRESS;
     short orig = DEFAULT_MEM_ADDRESS;
-
+    
+    BREAKPOINT_p breakPoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
+    
+    
     for (;;) {   // efficient endless loop
         char input[INPUT_LIMIT];
         char inputAddress[INPUT_LIMIT];
@@ -342,6 +350,25 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                         updateScreen(win, cpu, memory, programLoaded);
 
                         break;
+                    case BREAKPOINT:
+                        
+                        // Prompt for Address to edit
+                        clearPrompt(win);
+                        promptUser(win, "Address to Add A Breakpoint To: ", inputAddress);
+                        clearPrompt(win);
+
+                        // Validate address
+                        if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+                                || inputAddress[strspn(inputAddress,
+                                        "0123456789abcdefABCDEF")] != 0) {
+                            displayBoldMessage(win,
+                                    "Error: Invalid address. Press any key to continue.");
+                            continue;
+                        }
+                        
+                        addBreakPoint(breakPoints, inputAddress);
+                        break;
+                    
                     case EXIT:
                         mvwprintw(win->mainWin, PROMPT_DISPLAY_Y,
                                 PROMPT_DISPLAY_X,
