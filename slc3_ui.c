@@ -100,8 +100,23 @@ void printArrow(DEBUG_WIN_p win, CPU_p cpu) {
         wattron(win->mainWin, A_STANDOUT); 
         mvwprintw(win->mainWin, REG_MEM_START_Y + offset, ARROW_X, "->");
         wattroff(win->mainWin, A_STANDOUT);
-    }
+    } 
+}
+
+void printBreakPoint(DEBUG_WIN_p win, CPU_p cpu) {
+    //check if breakpoints are in range of view for the currently selected memory
+    int i = 0;
+    int offset;
     
+    for(i = 0; i < (MAXBREAK - win->breakpoints->emptySpaces); i++) {
+        offset =  win->breakpoints->breakpointArr[i] - win->memAddress;
+        if(offset >= 0 && offset < 10) {//much magic
+            wattron(win->mainWin, A_STANDOUT); 
+            mvwprintw(win->mainWin, REG_MEM_START_Y + offset, ARROW_X+1, "O");//such magic
+            wattroff(win->mainWin, A_STANDOUT);          
+        } 
+    }
+
 }
 
 void updateRegisterValues(DEBUG_WIN_p win, CPU_p cpu) {
@@ -156,6 +171,7 @@ void reprintScreen(DEBUG_WIN_p win, CPU_p cpu, unsigned short *memory, char prog
     updateBufferValues(win, cpu);
     if (programLoaded) {
         printArrow(win, cpu);
+        printBreakPoint(win, cpu);
     } else {
         clearArrow(win);
     }
@@ -210,6 +226,7 @@ void updateScreen(DEBUG_WIN_p win, CPU_p cpu, unsigned short *memory, char progr
         updateMemory(win, memory, win->memAddress);
         if (programLoaded) {
             printArrow(win, cpu);
+            printBreakPoint(win, cpu);
         } else {
             clearArrow(win);
         }

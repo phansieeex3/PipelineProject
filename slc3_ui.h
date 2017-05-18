@@ -81,6 +81,7 @@ Joshua Meigs
 #define HEX_OUT_SINGLE "x%.01X"
 #define REG_OUT_FORMAT "R%d:"
 
+
 /******** New Constants for Pipeline display ***********/
 #define FBUFF_LABEL_Y_X 2,16
 #define DBUFF_LABEL_Y_X 6,16
@@ -119,17 +120,27 @@ Joshua Meigs
 #define MBUFF_RESULT_VAL_Y_X 15,31
 #define MBUFF_PC_VAL_Y_X     15,39
 
+
+
 #define HALF(x) ((x)/2)
 
+
+
+
+
+
 typedef struct {
-	WINDOW *mainWin;
-	WINDOW *ioWin;
-	unsigned short memAddress;
-	unsigned short maxY, maxX;
-	unsigned short ioY, ioX;
+    WINDOW *mainWin;
+    WINDOW *ioWin;
+    unsigned short memAddress;
+    unsigned short maxY, maxX;
+    unsigned short ioY, ioX;
+    BREAKPOINT_p breakpoints;
 } DEBUG_WIN_s;
 
 typedef DEBUG_WIN_s* DEBUG_WIN_p;
+
+
 
 // Print Main Window Labels
 void printLabels(DEBUG_WIN_p);

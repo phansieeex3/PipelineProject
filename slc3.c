@@ -148,17 +148,60 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
 
     if (file == NULL) { //save to file.
         saveToFile(input, start, end);
-
     }
 
     fclose(file);
 
 }
 
-void addBreakPoint(BREAKPOINT_p breakpoints, char* inputAddress) {
-    
+void updateBreakpoints(DEBUG_WIN_p win) {
+    int i;
+    for(i = 0; i < MAXBREAK-1; i++) {//such magic
+        if(win->breakpoints->breakpointArr[i] == NULL_BREAKPOINT) {
+            win->breakpoints->breakpointArr[i] = win->breakpoints->breakpointArr[i+1];
+            win->breakpoints->breakpointArr[i+1] = NULL_BREAKPOINT;
+        }
+    }
 }
 
+short breakpointsContains(DEBUG_WIN_p win, unsigned short inputAddress) {
+    int i;
+    for(i = 0; i < MAXBREAK; i++) {
+        if(win->breakpoints->breakpointArr[i] == inputAddress) {
+            return i;
+        }
+    }
+    return NULL_BREAKPOINT;
+}
+
+void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddress) {
+    char* temp;
+    unsigned short breakpointToAdd = strtol(inputAddress, &temp, HEX_MODE);
+    short breakpointLocation = breakpointsContains(win, breakpointToAdd);
+    if(breakpointLocation > NULL_BREAKPOINT) {
+        win->breakpoints->breakpointArr[breakpointLocation] = NULL_BREAKPOINT; 
+        displayBoldMessage(win, "Breakpoint Removed");
+        updateBreakpoints(win);
+        win->breakpoints->emptySpaces++;
+        return;
+    } else if(breakpoints->emptySpaces > 0) {
+        win->breakpoints->breakpointArr[(MAXBREAK - breakpoints->emptySpaces)] = breakpointToAdd;
+        displayBoldMessage(win, "Breakpoint Added");
+        win->breakpoints->emptySpaces--;
+        return;
+    }
+    displayBoldMessage(win, "Error: Breakpoints ARR Full.");
+}
+
+
+
+void initBreakPoints(BREAKPOINT_p breakpoints) {
+    int i;
+    for(i = 0; i < MAXBREAK; i++) {
+        breakpoints->breakpointArr[i] = NULL_BREAKPOINT;
+    }
+    breakpoints->emptySpaces = MAXBREAK;
+}
 
 int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     // check to make sure both pointers are not NULLS
@@ -178,9 +221,9 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     int displayMemAddress = DEFAULT_MEM_ADDRESS;
     short orig = DEFAULT_MEM_ADDRESS;
     
-    BREAKPOINT_p breakPoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
-    
-    
+    BREAKPOINT_p breakpoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
+    initBreakPoints(breakpoints);
+    win->breakpoints = breakpoints;
     for (;;) {   // efficient endless loop
         char input[INPUT_LIMIT];
         char inputAddress[INPUT_LIMIT];
@@ -351,22 +394,28 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 
                         break;
                     case BREAKPOINT:
-                        
-                        // Prompt for Address to edit
-                        clearPrompt(win);
-                        promptUser(win, "Address to Add A Breakpoint To: ", inputAddress);
-                        clearPrompt(win);
+                        if(programLoaded) {
+                           // Prompt for Address to edit
+                            clearPrompt(win);
+                            promptUser(win, "Address to Add A Breakpoint To: ", inputAddress);
+                            clearPrompt(win);
 
-                        // Validate address
-                        if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
-                                || inputAddress[strspn(inputAddress,
-                                        "0123456789abcdefABCDEF")] != 0) {
-                            displayBoldMessage(win,
-                                    "Error: Invalid address. Press any key to continue.");
-                            continue;
-                        }
-                        
-                        addBreakPoint(breakPoints, inputAddress);
+                            // Validate address
+                            if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+                                    || inputAddress[strspn(inputAddress,
+                                            "0123456789abcdefABCDEF")] != 0) {
+                                displayBoldMessage(win,
+                                        "Error: Invalid address. Press any key to continue.");
+                                continue;
+                            }
+                            
+                            modifyBreakPoint(win, breakpoints, inputAddress);
+                            
+
+                            // Update screen to reflect changes
+                            updateScreen(win, cpu, memory, programLoaded); 
+                        } 
+                        displayBoldMessage(win, "No program loaded! Press any key to continue.");
                         break;
                     
                     case EXIT:
