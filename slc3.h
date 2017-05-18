@@ -84,8 +84,16 @@ Joshua Meigs
 #define BREAKPOINT '8'
 #define EXIT '9'
 
-#define STEP 0
-#define RUN 1
+#define PIPELINE_PHASES 5
+#define P_STORE 4
+#define P_MEM 3
+#define P_EX 2
+#define P_ID 1
+#define P_IF 0
+
+#define STEP_MODE 0
+#define RUN_MODE 1
+#define MAX_PREFETCH 8
 
 typedef unsigned short Register;
 
@@ -127,6 +135,7 @@ typedef struct {
     DBUFF_s dbuff;
     EMBUFF_s ebuff;
     EMBUFF_s mbuff;
+	short stalls[PIPELINE_PHASES];
 } CPU_s;
 
 typedef CPU_s* CPU_p;
