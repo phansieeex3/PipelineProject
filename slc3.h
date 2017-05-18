@@ -106,22 +106,17 @@ typedef unsigned short Register;
 
 typedef struct {
     short emptySpaces : MAXBREAK;
-<<<<<<< HEAD
+
     short breakpointArr[MAXBREAK];
-=======
-    Register breakPointArr[MAXBREAK];
->>>>>>> origin/master
+    //Register breakPointArr[MAXBREAK];
     
 } BREAKPOINT_s;
 
 typedef BREAKPOINT_s* BREAKPOINT_p;
 
-<<<<<<< HEAD
 typedef unsigned short Register;
 
 
-=======
->>>>>>> origin/master
 // Condition Codes
 typedef struct {
   Register n : 1;
