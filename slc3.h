@@ -86,21 +86,42 @@ Joshua Meigs
 #define BREAKPOINT '8'
 #define EXIT '9'
 
-#define STEP_PIPE 0
-#define RUN_PIPE 1
 
+#define PIPELINE_PHASES 5
+#define P_STORE 4
+#define P_MEM 3
+#define P_EX 2
+#define P_ID 1
+#define P_IF 0
+
+#define STEP_MODE 0
+#define RUN_MODE 1
+#define MAX_PREFETCH 8
+
+#define STEP_MODE 0
+#define RUN_MODE 1
+
+
+typedef unsigned short Register;
 
 typedef struct {
     short emptySpaces : MAXBREAK;
+<<<<<<< HEAD
     short breakpointArr[MAXBREAK];
+=======
+    Register breakPointArr[MAXBREAK];
+>>>>>>> origin/master
     
 } BREAKPOINT_s;
 
 typedef BREAKPOINT_s* BREAKPOINT_p;
 
+<<<<<<< HEAD
 typedef unsigned short Register;
 
 
+=======
+>>>>>>> origin/master
 // Condition Codes
 typedef struct {
   Register n : 1;
@@ -138,6 +159,7 @@ typedef struct {
     DBUFF_s dbuff;
     EMBUFF_s ebuff;
     EMBUFF_s mbuff;
+	short stalls[PIPELINE_PHASES];
 } CPU_s;
 
 typedef CPU_s* CPU_p;

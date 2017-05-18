@@ -708,6 +708,59 @@ int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
     // call function to contains switch to handle each OP during this step
 
     // return reason for stopping (HALTED, BREAKPOINT, STEP_FINISHED)
+	
+	// TODO Add functions to handle stalls (set what is stalled and remove stalls)
+	// for situations such as memory handling and 
+	short memoryAccessed = false;
+	short memCycleCounter = 0;
+	short breakFlag = false;
+	short prefetchIndex = MAX_PREFETCH;
+	Register prefetch[MAX_PREFETCH];
+	
+	do {
+		// Pre cycle work
+		  // Instruction prefetch
+		  if (prefetchIndex == MAX_PREFETCH && !memoryAccessed) {
+			  // TODO handle instruction prefetch
+		  }
+		  
+		  // stall handlers
+		  
+		  // check for breakpoint/set breakpoint flag
+			
+		// Store 
+		if (!cpu->stalls[P_STORE]) {
+			// TODO add switch statement to handle each instruction
+			// separate method?
+		}
+		
+		// MEM
+		if (!cpu->stalls[P_MEM]) {
+			// TODO add switch statement to handle each instruction
+			// separate method?
+		}
+		
+		// EX
+		if (!cpu->stalls[P_EX]) {
+			// TODO add switch statement to handle each instruction
+			// separate method?
+		}
+		
+		// ID/RR
+		if (!cpu->stalls[P_ID]) {
+			// TODO add switch statement to handle each instruction
+			// separate method?
+		}
+		
+		// IF
+		if (!cpu->stalls[P_IF]) {
+			// prefetch should be handled above and ready if this section is not stalled
+			cpu->ir = prefetch[prefetchIndex];
+			cpu->pc++;
+			prefetchIndex++;
+		}
+			
+	} while (memoryAccessed ||(mode == RUN_MODE && !breakFlag));
 }
 
 int main(int argc, char* argv[]) {
