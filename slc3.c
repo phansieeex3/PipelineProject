@@ -151,8 +151,33 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
     }
 
     fclose(file);
-
 }
+    
+char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
+{
+    char input[INPUT_LIMIT];
+    char programLoaded;
+    short orig = DEFAULT_MEM_ADDRESS;
+
+    promptUser(win, "File Name: ", input);
+    programLoaded = loadFile(input, cpu);
+    if (programLoaded) {
+        win->memAddress = cpu->pc;
+        orig = cpu->pc;
+        updateScreen(win, cpu, memory, programLoaded);
+        printIoLabels(win);
+        clearPrompt(win);
+        clearIOWin(win);
+        displayBoldMessage(win, "Load Successful!");
+    } else {
+        clearPrompt(win);
+        displayBoldMessage(win,
+                "Error: Invalid File. Press any key to continue.");
+    }
+
+    return programLoaded;
+}
+
 
 void updateBreakpoints(DEBUG_WIN_p win) {
     int i;
@@ -172,6 +197,16 @@ short breakpointsContains(DEBUG_WIN_p win, unsigned short inputAddress) {
         }
     }
     return NULL_BREAKPOINT;
+}
+
+bool breakpointsReached(int* breakpoints, unsigned short pc) {
+    int i;
+    for(i = 0; i < MAXBREAK; i++) {
+        if(breakpoints == pc) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddress) {
@@ -203,6 +238,142 @@ void initBreakPoints(BREAKPOINT_p breakpoints) {
     breakpoints->emptySpaces = MAXBREAK;
 }
 
+void save(CPU_p cpu, DEBUG_WIN_p win)
+{
+    char startAddress[INPUT_LIMIT];
+    char endAddress[INPUT_LIMIT];
+    char input[INPUT_LIMIT];
+
+    clearPrompt(win);
+    promptUser(win, "Start Address: ", startAddress);
+    clearPrompt(win);
+
+    // Validate address
+    if (strlen(startAddress) > EXPECTED_HEX_DIGITS
+            || startAddress[strspn(startAddress,
+                    "0123456789abcdefABCDEF")] != 0) {
+        displayBoldMessage(win,
+                "Error: Invalid address. Press any key to continue.");
+    }
+
+
+    // Prompt for end address (inclusive)
+    clearPrompt(win);
+    promptUser(win, "End Address: ", endAddress);
+    clearPrompt(win);
+
+    //Validate value
+    if (strlen(endAddress) > EXPECTED_HEX_DIGITS
+            || endAddress[strspn(endAddress,
+                    "0123456789abcdefABCDEF")] != 0) {
+        displayBoldMessage(win,
+                "Error: Invalid address. Press any key to continue.");
+    }
+
+    promptUser(win, "File name: ", input);
+
+    promptSaveToFile(cpu, input, startAddress, endAddress,
+            win);
+
+    displayBoldMessage(win,
+            "Succesfull, New data saved to file.");
+}
+
+void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
+
+    int displayMemAddress = DEFAULT_MEM_ADDRESS;
+    char inputAddress[INPUT_LIMIT];
+    char *temp;
+
+    clearPrompt(win);
+    promptUser(win, "Starting Address: ", inputAddress);
+    clearPrompt(win);
+
+    if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+            || inputAddress[strspn(inputAddress,
+                    "0123456789abcdefABCDEF")] != 0) {
+        displayBoldMessage(win,
+                "Error: Invalid address. Press any key to continue.");
+    } else {
+        displayMemAddress = strtol(inputAddress, &temp,
+                HEX_MODE);
+        win->memAddress = displayMemAddress;
+        updateScreen(win, cpu, memory, programLoaded);
+    }
+}
+
+void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memory)
+{
+    char *temp;
+    char inputAddress[INPUT_LIMIT];
+    char input[INPUT_LIMIT];
+    int displayMemAddress = DEFAULT_MEM_ADDRESS;
+
+    // Prompt for Address to edit
+    clearPrompt(win);
+    promptUser(win, "Address to Edit: ", inputAddress);
+    clearPrompt(win);
+
+    // Validate address
+    if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+            || inputAddress[strspn(inputAddress,
+                    "0123456789abcdefABCDEF")] != 0) {
+        displayBoldMessage(win,
+                "Error: Invalid address. Press any key to continue.");
+    }
+
+    // Prompt for new value to place into memory
+    clearPrompt(win);
+    promptUser(win, "New Value: ", input);
+    clearPrompt(win);
+
+    // Validate value
+    if (strlen(input) > EXPECTED_HEX_DIGITS
+            || input[strspn(input, "0123456789abcdefABCDEF")]
+                    != 0) {
+        displayBoldMessage(win,
+                "Error: Invalid Value. Press any key to continue.");
+    }
+
+    // Update Memory
+    displayMemAddress = strtol(inputAddress, &temp,
+            HEX_MODE);
+    memory[displayMemAddress] = strtol(input, &temp,
+            HEX_MODE);
+
+    // Update Memory display                                
+    displayMemAddress =
+            (displayMemAddress >= MEM_CENTERED_OFFSET) ?
+                    displayMemAddress
+                            - MEM_CENTERED_OFFSET :
+                    0;
+    win->memAddress = displayMemAddress;
+
+    // Update screen to reflect changes
+    updateScreen(win, cpu, memory, programLoaded);
+}
+
+void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char programLoaded)
+{
+    char inputAddress[INPUT_LIMIT];
+    clearPrompt(win);
+    promptUser(win, "Address to Add A Breakpoint To: ", inputAddress);
+    clearPrompt(win);
+
+    // Validate address
+    if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+            || inputAddress[strspn(inputAddress,
+                    "0123456789abcdefABCDEF")] != 0) {
+        displayBoldMessage(win,
+                "Error: Invalid address. Press any key to continue.");
+    }
+    
+    modifyBreakPoint(win, breakpoints, inputAddress);
+    
+
+    // Update screen to reflect changes
+    updateScreen(win, cpu, memory, programLoaded); 
+}
 int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     // check to make sure both pointers are not NULLS
     if (!cpu)
@@ -295,6 +466,7 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                             continue;
                         }
 
+
                         char *tempEnd = input;
 
                         promptUser(win, "File name: ", input);
@@ -306,6 +478,11 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
                                 "Succesfull, New data saved to file.");
 
                         break;
+                    case RSV:
+                        //using base register. 
+                         cpu->mar = cpu->reg_file[Rs1]; 
+                         //destination register is always r6       
+                    break;
 
                     case STEP:
                         if (!programLoaded) {
@@ -661,6 +838,7 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     }
 }
 
+<<<<<<< HEAD
 int checkBEN(CPU_p cpu) {
     // much magic, such bad, wow!
 	Register nzp;
@@ -682,14 +860,71 @@ void flushPipeline(CPU_p cpu) {
 	cpu->prefetch.index = MAX_PREFETCH;
 }
 
-void monitor(CPU_p cpu, DEBUG_WIN_p win) {
-    // prep
-    // main do/while loop
-    // prompt user
-    // Menu Switch
-    // Step/run call controller_pipeline(cpu, mode, breakpoints) mode: STEP, RUN
-    // load/edit/save/display/breakpoint calls appropriate funtion
+int monitor(CPU_p cpu, DEBUG_WIN_p win) {
+    // check to make sure both pointers are not NULLS
+    if (!cpu) return NULL_CPU_POINTER;
+    if (!memory) return NULL_MEMORY_POINTER;
 
+
+    int displayMemAddress = DEFAULT_MEM_ADDRESS;
+    short orig = DEFAULT_MEM_ADDRESS;    
+    char programLoaded = false;
+    char input[INPUT_LIMIT];
+
+    BREAKPOINT_p breakpoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
+    initBreakPoints(breakpoints);
+    win->breakpoints = breakpoints;
+
+    for(;;)
+    {
+        //showScreen
+        updateScreen(win, cpu, memory, programLoaded);
+        promptUser(win, "", input);
+
+        if (strlen(input) == SINGLE_CHAR) {
+            switch(input[MENU_SELECTION]) {
+            case LOAD:
+                programLoaded = load(cpu, memory, win);
+                break;
+            case SAVE:
+                save(cpu, win);
+                break;
+            case STEP:
+                controller_pipelined(cpu, STEP, breakpoints);
+                updateScreen(win, cpu, memory, programLoaded);
+                break;
+            case RUN:
+                controller_pipelined(cpu, RUN, breakpoints);
+                updateScreen(win, cpu, memory, programLoaded);
+                break;
+            case DISPLAY_MEM:
+                displayMemory(cpu, win, programLoaded);
+                break;
+            case EDIT:
+                edit(cpu, win, programLoaded, memory);
+                break;
+            case BREAKPOINT:
+                if(programLoaded) {
+                    breakPoint(cpu, win, breakpoints, programLoaded);
+                }
+                else {
+                    displayBoldMessage(win, "No program loaded! Press any key to continue.");
+                }
+                break;
+            case EXIT:
+                mvwprintw(win->mainWin, PROMPT_DISPLAY_Y,
+                PROMPT_DISPLAY_X, "Exit Selected! Press any key to continue.");
+                wgetch(win->mainWin);
+                return 0;
+            default: 
+                clearPrompt(win);
+                displayBoldMessage(win, "Invalid Menu Option");           
+            }
+        }
+
+
+
+    } //end for loop
 }
 
 // Write results to register
@@ -908,7 +1143,7 @@ int main(int argc, char* argv[]) {
     // print
     reprintScreen(win, cpu, memory, false);
 
-    controller(cpu, win);
+    monitor(cpu, win);
 
     // free resources
     endWindows(win);
