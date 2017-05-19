@@ -671,6 +671,71 @@ void monitor(CPU_p cpu, DEBUG_WIN_p win) {
 
 }
 
+void storeStep() {
+	
+}
+
+void memoryStep() {
+	
+}
+
+void executeStep() {
+	
+}
+
+// decode IR and get values out of registers
+void decodeStep(CPU_p cpu) {
+	cpu->dbuff.op = (Register) OPCODE(cpu->ir);
+    cpu->dbuff.dr = DSTREG(cpu->ir);
+    cpu->dbuff.pc = cpu->fbuff.pc;
+	switch(cpu->dbuff.op) {
+	    case ADD:
+		case AND:
+		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			if (IMMBIT(cpu->ir)) {
+                    cpu->dbuff.opn2 = SEXTIMMVAL(cpu->ir);
+            } else {
+                    cpu->dbuff.opn2 = cpu->reg_file[SRCREG2(cpu->ir)];
+            }
+			break;
+		case NOT:
+		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			cpu->dbuff.opn2 = SEXTIMMVAL(cpu->ir);
+			break;
+		case BR:
+		    cpu->dbuff.opn1 = NZPBITS(cpu->ir);
+			cpu->dbuff.opn2 = SEXTPCOFFSET9(cpu->ir);
+			break;
+		case ST:
+		case LD:
+		case LEA:
+		    cpu->dbuff.opn1 = SEXTPCOFFSET9(cpu->ir);
+			cpu->dbuff.opn2 = NOP;
+			break;
+		case STR:
+		case LDR:
+		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			cpu->dbuff.opn2 = SEXTPCOFFSET9(cpu->ir);
+			break;
+		case JSR:
+		    // only does JSRR
+		    cpu->dbuff.opn1 = SEXTPCOFFSET9(cpu->ir);
+			cpu->dbuff.opn2 = NOP;
+			break;
+		case JMP:
+		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			cpu->dbuff.opn2 = NOP;
+			break;
+		case TRAP:
+		    cpu->dbuff.opn1 = ZEXTTRAPVECT(cpu->ir);
+			cpu->dbuff.opn2 = NOP;
+			break;
+		case RSV:
+		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			cpu->dbuff.opn2 = IMMBIT(cpu->ir);
+	}
+}
+
 int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
     // main controller for pipelines
 
@@ -748,15 +813,14 @@ int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
 		
 		// ID/RR
 		if (!cpu->stalls[P_ID]) {
-			// TODO add switch statement to handle each instruction
-			// separate method?
+			decodeStep(cpu);
 		}
 		
 		// IF
 		if (!cpu->stalls[P_IF]) {
 			// prefetch should be handled above and ready if this section is not stalled
-			cpu->ir = prefetch[prefetchIndex];
-			cpu->pc++;
+			cpu->fbuff.ir = prefetch[prefetchIndex];
+			cpu->fbuff.pc = cpu->pc;
 			prefetchIndex++;
 		}
 			

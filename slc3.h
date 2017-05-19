@@ -48,7 +48,8 @@ Joshua Meigs
 #define IMMBIT(instr)  ((instr & 0x0020) >> 5) 
 #define NBIT(instr)  ((instr & 0x0800) >> 11) 
 #define ZBIT(instr)  ((instr & 0x0400) >> 10) 
-#define PBIT(instr)  ((instr & 0x0200) >> 9) 
+#define PBIT(instr)  ((instr & 0x0200) >> 9)
+#define NZPBITS(instr) ((instr & 0x0E00) >> 9)
  
 // ZEXT trap
 #define ZEXTTRAPVECT(instr) (instr & 0x00FF)
@@ -101,6 +102,8 @@ Joshua Meigs
 #define STEP_MODE 0
 #define RUN_MODE 1
 
+#define NOP 0x0000
+
 
 typedef unsigned short Register;
 
@@ -130,16 +133,16 @@ typedef struct {
 } FBUFF_s;
 
 typedef struct {
-    Register op;
-    Register dr;
+    Register op : 4;
+    Register dr : 3;
     Register opn1;
     Register opn2;
     Register pc;
 } DBUFF_s;
 
 typedef struct {
-    Register op;
-    Register dr;
+    Register op : 4;
+    Register dr : 3;
     Register result;
     Register pc;
 } EMBUFF_s;
