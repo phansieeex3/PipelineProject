@@ -661,6 +661,27 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     }
 }
 
+int checkBEN(CPU_p cpu) {
+    // much magic, such bad, wow!
+	Register nzp;
+	nzp = cpu->dbuff.opn1 << 9;
+	return (cpu->conCodes.n && NBIT(nzp))
+              + (cpu->conCodes.z && ZBIT(nzp))
+              + (cpu->conCodes.p && PBIT(nzp));	
+}
+
+void flushPipeline(CPU_p cpu) {
+	cpu->fbuff.pc = NOP;
+	cpu->fbuff.ir = NOP;
+	cpu->fbuff.pc = NOP;
+	cpu->dbuff.op = NOP;
+	cpu->dbuff.dr = NOP;
+	cpu->dbuff.pc = NOP;
+	cpu->dbuff.opn1 = NOP;
+	cpu->dbuff.opn2 = NOP;
+	cpu->prefetch.index = MAX_PREFETCH;
+}
+
 void monitor(CPU_p cpu, DEBUG_WIN_p win) {
     // prep
     // main do/while loop
@@ -671,21 +692,72 @@ void monitor(CPU_p cpu, DEBUG_WIN_p win) {
 
 }
 
+// Write results to register
 void storeStep() {
 	
 }
 
+// Memory access (LD/ST like commands)
 void memoryStep() {
 	
 }
 
-void executeStep() {
+// Execute + Eval Address
+void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
+	cpu->ebuff.op = cpu->dbuff.op;
+	cpu->ebuff.dr = cpu->dbuff.dr;
+	cpu->ebuff.pc = cpu->dbuff.pc;
+	cpu->alu_a = cpu->dbuff.opn1;
+	cpu->alu_b = cpu->dbuff.opn2;
 	
+	switch(cpu->ebuff.op) {
+		case ADD:
+			cpu->alu_r = cpu->alu_a + cpu->alu_b;
+			cpu->ebuff.result = cpu->alu_r;
+			break;
+		case AND:
+			cpu->alu_r = cpu->alu_a & cpu->alu_b;
+			cpu->ebuff.result = cpu->alu_r; 
+			break;
+		case NOT:
+		    cpu->alu_r = ~cpu->alu_a;
+		case BR:
+		    // Stall until next OP doesnt write to reg
+		    if (checkBEN(cpu)) {
+                    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
+					cpu->pc = cpu->ebuff.result;
+					
+					// flush pipeline and prefetch
+					flushPipeline(cpu);	
+            }
+			break;
+		case JSR:
+		case JMP:
+		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
+		    cpu->pc = cpu->ebuff.result;
+			flushPipeline(cpu);
+		case ST:
+		case LD:
+		case LEA:
+		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
+			break;
+		case LDR:
+		case STR:
+		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
+		case TRAP:
+		    // Test for correctness
+			if(trap(cpu, win)) {
+			    return;
+			}
+		case RSV:
+		    
+		    break;
+	}
 }
 
 // decode IR and get values out of registers
 void decodeStep(CPU_p cpu) {
-	cpu->dbuff.op = (Register) OPCODE(cpu->ir);
+	cpu->dbuff.op = (Register)OPCODE(cpu->ir);
     cpu->dbuff.dr = DSTREG(cpu->ir);
     cpu->dbuff.pc = cpu->fbuff.pc;
 	switch(cpu->dbuff.op) {
@@ -736,7 +808,7 @@ void decodeStep(CPU_p cpu) {
 	}
 }
 
-int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
+int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, int* breakpoints) {
     // main controller for pipelines
 
     // Note: Simulate memory with 10 cycles of access time
@@ -779,13 +851,12 @@ int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
 	short memoryAccessed = false;
 	short memCycleCounter = 0;
 	short breakFlag = false;
-	short prefetchIndex = MAX_PREFETCH;
-	Register prefetch[MAX_PREFETCH];
+	cpu->prefetch.index = MAX_PREFETCH;
 	
 	do {
 		// Pre cycle work
 		  // Instruction prefetch
-		  if (prefetchIndex == MAX_PREFETCH && !memoryAccessed) {
+		  if (cpu->prefetch.index == MAX_PREFETCH && !memoryAccessed) {
 			  // TODO handle instruction prefetch
 		  }
 		  
@@ -807,8 +878,7 @@ int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
 		
 		// EX
 		if (!cpu->stalls[P_EX]) {
-			// TODO add switch statement to handle each instruction
-			// separate method?
+			executeStep(cpu, win);
 		}
 		
 		// ID/RR
@@ -819,9 +889,9 @@ int controller_pipelined(CPU_p cpu, int mode, int* breakpoints) {
 		// IF
 		if (!cpu->stalls[P_IF]) {
 			// prefetch should be handled above and ready if this section is not stalled
-			cpu->fbuff.ir = prefetch[prefetchIndex];
-			cpu->fbuff.pc = cpu->pc;
-			prefetchIndex++;
+			cpu->fbuff.ir = cpu->prefetch.instructs[cpu->prefetch.index];
+			cpu->fbuff.pc = cpu->pc++;
+			cpu->prefetch.index++;
 		}
 			
 	} while (memoryAccessed ||(mode == RUN_MODE && !breakFlag));

@@ -99,9 +99,6 @@ Joshua Meigs
 #define RUN_MODE 1
 #define MAX_PREFETCH 8
 
-#define STEP_MODE 0
-#define RUN_MODE 1
-
 #define NOP 0x0000
 
 
@@ -148,6 +145,11 @@ typedef struct {
 } EMBUFF_s;
 
 typedef struct {
+	short index;
+	Register instructs[MAX_PREFETCH];
+} PREFETCH_s;
+
+typedef struct {
     Register reg_file[REG_SIZE];
     Register mar, mdr, ir, pc;
     Register alu_a, alu_b, alu_r;
@@ -157,6 +159,7 @@ typedef struct {
     DBUFF_s dbuff;
     EMBUFF_s ebuff;
     EMBUFF_s mbuff;
+	PREFETCH_s prefetch;
 	short stalls[PIPELINE_PHASES];
 } CPU_s;
 
