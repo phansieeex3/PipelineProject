@@ -174,6 +174,16 @@ short breakpointsContains(DEBUG_WIN_p win, unsigned short inputAddress) {
     return NULL_BREAKPOINT;
 }
 
+bool breakpointsReached(int* breakpoints, unsigned short pc) {
+    int i;
+    for(i = 0; i < MAXBREAK; i++) {
+        if(breakpoints == pc) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddress) {
     char* temp;
     unsigned short breakpointToAdd = strtol(inputAddress, &temp, HEX_MODE);
