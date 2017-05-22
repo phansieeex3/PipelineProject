@@ -39,6 +39,10 @@ Joshua Meigs
 #define STR 7
 #define LDR 6
 #define RSV 13 //reserve :D
+#define LDI 10
+#define STI 11
+
+
 
 // Macros to get IR bit fields
 #define OPCODE(instr)  (instr >> 12 & 0x000F)
@@ -75,7 +79,7 @@ Joshua Meigs
 #define NULL_MEMORY_POINTER -2
 #define MEM_CENTERED_OFFSET 7
 #define MAXBREAK 4
-#define NULL_BREAKPOINT -1
+#define NULL_BREAKPOINT 99999
 
 // Menu Options
 #define LOAD '1'
@@ -95,6 +99,8 @@ Joshua Meigs
 #define P_ID 1
 #define P_IF 0
 
+#define MEMORY_ACCESS_STALL_TIME 10
+
 #define STEP_MODE 0
 #define RUN_MODE 1
 #define MAX_PREFETCH 8
@@ -105,9 +111,9 @@ Joshua Meigs
 typedef unsigned short Register;
 
 typedef struct {
-    short emptySpaces : MAXBREAK;
+    int emptySpaces : MAXBREAK;
 
-    short breakpointArr[MAXBREAK];
+    int breakpointArr[MAXBREAK];
     //Register breakPointArr[MAXBREAK];
     
 } BREAKPOINT_s;
@@ -161,6 +167,11 @@ typedef struct {
     EMBUFF_s mbuff;
 	PREFETCH_s prefetch;
 	short stalls[PIPELINE_PHASES];
+    bool indirectFlag;
 } CPU_s;
 
 typedef CPU_s* CPU_p;
+
+
+
+
