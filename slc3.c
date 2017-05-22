@@ -189,7 +189,7 @@ void updateBreakpoints(DEBUG_WIN_p win) {
     }
 }
 
-short breakpointsContains(DEBUG_WIN_p win, unsigned short inputAddress) {
+int breakpointsContains(DEBUG_WIN_p win, int inputAddress) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
         if(win->breakpoints->breakpointArr[i] == inputAddress) {
@@ -202,7 +202,7 @@ short breakpointsContains(DEBUG_WIN_p win, unsigned short inputAddress) {
 bool breakpointsReached(int* breakpoints, unsigned short pc) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
-        if(breakpoints == pc) {
+        if(breakpoints[i] == pc) {
             return true;
         }
     }
@@ -838,7 +838,8 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     }
 }
 
-<<<<<<< HEAD
+
+
 int checkBEN(CPU_p cpu) {
     // much magic, such bad, wow!
 	Register nzp;
@@ -933,8 +934,51 @@ void storeStep() {
 }
 
 // Memory access (LD/ST like commands)
-void memoryStep() {
-	
+void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
+	cpu->mbuff.op = cpu->ebuff.op;
+	cpu->mbuff.dr = cpu->ebuff.dr;
+	cpu->mbuff.pc = cpu->ebuff.pc;
+    cpu->mbuff.result = cpu->ebuff.result;
+    
+    // implement stall for ten cycles
+    switch(cpu->mbuff.op) {
+        
+        case LD:
+        case LDR:
+        cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+        cpu->mbuff.result = memory[cpu->ebuff.result]; //stall for 10 cycles
+        break;      
+        case LDI:
+        if(cpu->indirectFlag == true) {
+            cpu->mbuff.result = memory[cpu->ebuff.result];
+            cpu->indirectFlag = false;
+        }
+        cpu->ebuff.result = memory[cpu->ebuff.result];// stall for 100 cycles
+        cpu->indirectFlag = true;
+        break;
+
+        
+        case ST:
+        case STR:
+        memory[cpu->ebuff.result] = cpu->mbuff.dr; //stall for 10 cycles
+        break;
+        
+        case STI:
+        if(cpu->indirectFlag == true) {
+            memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 100 cycles
+            cpu->indirectFlag = false;
+        }
+        memory[cpu->ebuff.result] = cpu->mbuff.dr; // stall for 100 cycles
+        cpu->indirectFlag = true;
+        break;
+        
+        case RSV:
+
+        break;
+        
+    }
+    
+    
 }
 
 // Execute + Eval Address
