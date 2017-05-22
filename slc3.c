@@ -202,7 +202,7 @@ short breakpointsContains(DEBUG_WIN_p win, unsigned short inputAddress) {
 bool breakpointsReached(int* breakpoints, unsigned short pc) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
-        if(breakpoints == pc) {
+        if(breakpoints[i] == pc) {
             return true;
         }
     }
@@ -838,7 +838,6 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
     }
 }
 
-<<<<<<< HEAD
 int checkBEN(CPU_p cpu) {
     // much magic, such bad, wow!
 	Register nzp;
@@ -858,73 +857,6 @@ void flushPipeline(CPU_p cpu) {
 	cpu->dbuff.opn1 = NOP;
 	cpu->dbuff.opn2 = NOP;
 	cpu->prefetch.index = MAX_PREFETCH;
-}
-
-int monitor(CPU_p cpu, DEBUG_WIN_p win) {
-    // check to make sure both pointers are not NULLS
-    if (!cpu) return NULL_CPU_POINTER;
-    if (!memory) return NULL_MEMORY_POINTER;
-
-
-    int displayMemAddress = DEFAULT_MEM_ADDRESS;
-    short orig = DEFAULT_MEM_ADDRESS;    
-    char programLoaded = false;
-    char input[INPUT_LIMIT];
-
-    BREAKPOINT_p breakpoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
-    initBreakPoints(breakpoints);
-    win->breakpoints = breakpoints;
-
-    for(;;)
-    {
-        //showScreen
-        updateScreen(win, cpu, memory, programLoaded);
-        promptUser(win, "", input);
-
-        if (strlen(input) == SINGLE_CHAR) {
-            switch(input[MENU_SELECTION]) {
-            case LOAD:
-                programLoaded = load(cpu, memory, win);
-                break;
-            case SAVE:
-                save(cpu, win);
-                break;
-            case STEP:
-                controller_pipelined(cpu, STEP, breakpoints);
-                updateScreen(win, cpu, memory, programLoaded);
-                break;
-            case RUN:
-                controller_pipelined(cpu, RUN, breakpoints);
-                updateScreen(win, cpu, memory, programLoaded);
-                break;
-            case DISPLAY_MEM:
-                displayMemory(cpu, win, programLoaded);
-                break;
-            case EDIT:
-                edit(cpu, win, programLoaded, memory);
-                break;
-            case BREAKPOINT:
-                if(programLoaded) {
-                    breakPoint(cpu, win, breakpoints, programLoaded);
-                }
-                else {
-                    displayBoldMessage(win, "No program loaded! Press any key to continue.");
-                }
-                break;
-            case EXIT:
-                mvwprintw(win->mainWin, PROMPT_DISPLAY_Y,
-                PROMPT_DISPLAY_X, "Exit Selected! Press any key to continue.");
-                wgetch(win->mainWin);
-                return 0;
-            default: 
-                clearPrompt(win);
-                displayBoldMessage(win, "Invalid Menu Option");           
-            }
-        }
-
-
-
-    } //end for loop
 }
 
 // Write results to register
@@ -958,12 +890,21 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		    cpu->alu_r = ~cpu->alu_a;
 		case BR:
 		    // Stall until next OP doesnt write to reg
+			if (cpu->mbuff.pc == NOP) {
+				cpu->stalls[P_EX]++;
+			    cpu->ebuff.op = NOP;
+			    cpu->ebuff.dr = NOP;
+			    cpu->ebuff.result = NOP;
+			    cpu->ebuff.pc = NOP;
+				break;
+			}
+			
 		    if (checkBEN(cpu)) {
-                    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
-					cpu->pc = cpu->ebuff.result;
+                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
+			    cpu->pc = cpu->ebuff.result;
 					
-					// flush pipeline and prefetch
-					flushPipeline(cpu);	
+				// flush pipeline and prefetch
+				flushPipeline(cpu);	
             }
 			break;
 		case JSR:
@@ -990,60 +931,108 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 	}
 }
 
+short checkRawHazards(CPU_p cpu, Register src) {
+	if (cpu->dbuff.dr == src) {
+		return 3;
+	} else if (cpu->ebuff.dr == src) {
+		return 2;
+	} else if (cpu->mbuff.dr == src) {
+		return 1;
+	}
+	
+	return 0;
+	
+}
+
+short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
+	if (cpu->dbuff.dr == src1 && cpu->dbuff.dr == src1) {
+		return 3;
+	} else if (cpu->ebuff.dr == src1 && cpu->ebuff.dr == src1) {
+		return 2;
+	} else if (cpu->mbuff.dr == src1 && cpu->mbuff.dr == src1) {
+		return 1;
+	}
+	
+	return 0;
+}
+
 // decode IR and get values out of registers
 void decodeStep(CPU_p cpu) {
-	cpu->dbuff.op = (Register)OPCODE(cpu->ir);
-    cpu->dbuff.dr = DSTREG(cpu->ir);
-    cpu->dbuff.pc = cpu->fbuff.pc;
-	switch(cpu->dbuff.op) {
+	Register opn1;
+	Register opn2;
+	
+	switch((Register)OPCODE(cpu->ir)) {
 	    case ADD:
 		case AND:
-		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
 			if (IMMBIT(cpu->ir)) {
-                    cpu->dbuff.opn2 = SEXTIMMVAL(cpu->ir);
+                    opn2 = SEXTIMMVAL(cpu->ir);
+					cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
+					
             } else {
-                    cpu->dbuff.opn2 = cpu->reg_file[SRCREG2(cpu->ir)];
+                    opn2 = cpu->reg_file[SRCREG2(cpu->ir)];
+					cpu->stalls[P_ID] = checkRawHazardsTwoSrcs(cpu, SRCREG(cpu->ir), SRCREG2(cpu->ir));
             }
 			break;
 		case NOT:
-		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			cpu->dbuff.opn2 = SEXTIMMVAL(cpu->ir);
+		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			opn2 = SEXTIMMVAL(cpu->ir);
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
 			break;
 		case BR:
-		    cpu->dbuff.opn1 = NZPBITS(cpu->ir);
-			cpu->dbuff.opn2 = SEXTPCOFFSET9(cpu->ir);
+		    opn1 = NZPBITS(cpu->ir);
+			opn2 = SEXTPCOFFSET9(cpu->ir);
 			break;
 		case ST:
 		case LD:
 		case LEA:
-		    cpu->dbuff.opn1 = SEXTPCOFFSET9(cpu->ir);
-			cpu->dbuff.opn2 = NOP;
+		    opn1 = SEXTPCOFFSET9(cpu->ir);
+			opn2 = NOP;
 			break;
 		case STR:
 		case LDR:
-		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			cpu->dbuff.opn2 = SEXTPCOFFSET9(cpu->ir);
+		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			opn2 = SEXTPCOFFSET9(cpu->ir);
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
 			break;
 		case JSR:
 		    // only does JSRR
-		    cpu->dbuff.opn1 = SEXTPCOFFSET9(cpu->ir);
-			cpu->dbuff.opn2 = NOP;
+		    opn1 = SEXTPCOFFSET9(cpu->ir);
+			opn2 = NOP;
 			break;
 		case JMP:
-		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			cpu->dbuff.opn2 = NOP;
+		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			opn2 = NOP;
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
 			break;
 		case TRAP:
-		    cpu->dbuff.opn1 = ZEXTTRAPVECT(cpu->ir);
-			cpu->dbuff.opn2 = NOP;
+		    opn1 = ZEXTTRAPVECT(cpu->ir);
+			opn2 = NOP;
 			break;
 		case RSV:
-		    cpu->dbuff.opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			cpu->dbuff.opn2 = IMMBIT(cpu->ir);
+		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+			opn2 = IMMBIT(cpu->ir);
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
+			break;
+		
+		// Push NOP forward if stalling
+		if (cpu->stalls[P_ID]) {
+			cpu->dbuff.op = NOP;
+			cpu->dbuff.dr = NOP;
+			cpu->dbuff.opn1 = NOP;
+			cpu->dbuff.opn2 = NOP;
+			cpu->dbuff.pc = NOP;
+		} else { // Not Stalled
+			cpu->dbuff.op = (Register)OPCODE(cpu->ir);
+			cpu->dbuff.dr = DSTREG(cpu->ir);
+			cpu->dbuff.pc = cpu->fbuff.pc;
+			cpu->dbuff.opn1 = opn1;
+			cpu->dbuff.opn2 = opn2;
+		}
 	}
 }
 
-int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, int* breakpoints) {
+int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
     // main controller for pipelines
 
     // Note: Simulate memory with 10 cycles of access time
@@ -1114,11 +1103,25 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, int* breakpoints)
 		// EX
 		if (!cpu->stalls[P_EX]) {
 			executeStep(cpu, win);
+		} else {
+			cpu->stalls[P_EX]--;
+			cpu->ebuff.op = NOP;
+			cpu->ebuff.dr = NOP;
+			cpu->ebuff.result = NOP;
+			cpu->ebuff.pc = NOP;
 		}
+		
 		
 		// ID/RR
 		if (!cpu->stalls[P_ID]) {
 			decodeStep(cpu);
+		} else {
+			cpu->stalls[P_ID]--;
+			cpu->dbuff.op = NOP;
+			cpu->dbuff.dr = NOP;
+			cpu->dbuff.opn1 = NOP;
+			cpu->dbuff.opn2 = NOP;
+			cpu->dbuff.pc = NOP;
 		}
 		
 		// IF
@@ -1127,9 +1130,80 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, int* breakpoints)
 			cpu->fbuff.ir = cpu->prefetch.instructs[cpu->prefetch.index];
 			cpu->fbuff.pc = cpu->pc++;
 			cpu->prefetch.index++;
+		} else {
+			cpu->stalls[P_IF]--;
+			cpu->fbuff.ir = NOP;
+			cpu->fbuff.pc = NOP;
 		}
 			
 	} while (memoryAccessed ||(mode == RUN_MODE && !breakFlag));
+}
+
+int monitor(CPU_p cpu, DEBUG_WIN_p win) {
+    // check to make sure both pointers are not NULLS
+    if (!cpu) return NULL_CPU_POINTER;
+    if (!memory) return NULL_MEMORY_POINTER;
+
+
+    int displayMemAddress = DEFAULT_MEM_ADDRESS;
+    short orig = DEFAULT_MEM_ADDRESS;    
+    char programLoaded = false;
+    char input[INPUT_LIMIT];
+
+    BREAKPOINT_p breakpoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
+    initBreakPoints(breakpoints);
+    win->breakpoints = breakpoints;
+
+    for(;;)
+    {
+        //showScreen
+        updateScreen(win, cpu, memory, programLoaded);
+        promptUser(win, "", input);
+
+        if (strlen(input) == SINGLE_CHAR) {
+            switch(input[MENU_SELECTION]) {
+            case LOAD:
+                programLoaded = load(cpu, memory, win);
+                break;
+            case SAVE:
+                save(cpu, win);
+                break;
+            case STEP:
+                controller_pipelined(cpu, win, STEP, breakpoints);
+                updateScreen(win, cpu, memory, programLoaded);
+                break;
+            case RUN:
+                controller_pipelined(cpu, win, RUN, breakpoints);
+                updateScreen(win, cpu, memory, programLoaded);
+                break;
+            case DISPLAY_MEM:
+                displayMemory(cpu, win, programLoaded);
+                break;
+            case EDIT:
+                edit(cpu, win, programLoaded, memory);
+                break;
+            case BREAKPOINT:
+                if(programLoaded) {
+                    breakPoint(cpu, win, breakpoints, programLoaded);
+                }
+                else {
+                    displayBoldMessage(win, "No program loaded! Press any key to continue.");
+                }
+                break;
+            case EXIT:
+                mvwprintw(win->mainWin, PROMPT_DISPLAY_Y,
+                PROMPT_DISPLAY_X, "Exit Selected! Press any key to continue.");
+                wgetch(win->mainWin);
+                return 0;
+            default: 
+                clearPrompt(win);
+                displayBoldMessage(win, "Invalid Menu Option");           
+            }
+        }
+
+
+
+    } //end for loop
 }
 
 int main(int argc, char* argv[]) {
