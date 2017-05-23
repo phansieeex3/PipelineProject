@@ -860,9 +860,44 @@ void flushPipeline(CPU_p cpu) {
 }
 
 // Write results to register
-void storeStep() {
-	
+void storeStep(CPU_p cpu, DEBUG_WIN_p win) {
+
+    switch(cpu->ebuff.op) {
+            case ADD:
+            case AND:
+            case NOT:
+                cpu->dbuff.dr = cpu->alu_r;
+                //updateConCodes(cpu, cpu->dbuff.dr);
+                break;
+            case LD:
+            case LDR:
+                cpu->dbuff.dr  = memory[cpu->dbuff.opn1 + cpu->dbuff.opn2];
+                //updateConCodes(cpu, cpu->dbuff.dr);
+                break;
+            case ST:
+                memory[cpu->pc + SEXTOFFSET9(cpu->ir)] = cpu->dbuff.dr;
+                break;
+            case STR:
+                memory[cpu->reg_file[SRCREG(cpu->ir)] + SEXTPCOFFSET6(cpu->ir)] = cpu->dbuff.dr;
+                break;
+
+            case RSV:
+                if (cpu->dbuff.opn2) //if 1, push case
+                {
+                    cpu->dbuff.dr = memory[cpu->dbuff.dr]--; //make room on the stack R6
+                    memory[cpu->dbuff.dr] = cpu->dbuff.dr]; //push item on stack
+
+                } else { //[pop]
+                    cpu->dbuff.opn1 = memory[cpu->dbuff.dr];
+                    cpu->dbuff.dr = memory[cpu->dbuff.dr]++; //pop off stack.     
+
+                }
+                break;
+            }
+    }
+    
 }
+
 
 // Memory access (LD/ST like commands)
 void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
