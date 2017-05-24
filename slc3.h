@@ -60,6 +60,7 @@ Joshua Meigs
 
 // SEXT
 #define SEXTPCOFFSET9(instr) ((instr << 23 ) >> 23)
+#define SEXTPCOFFSET11(instr) ((instr << 21 ) >> 21)
 #define SEXTPCOFFSET6(instr)  ((instr << 26) >> 26) 
 #define SEXTIMMVAL(instr)  ((instr << 27) >> 27) 
 

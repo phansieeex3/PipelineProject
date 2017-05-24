@@ -1060,6 +1060,8 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			break;
 		case ST:
 		case LD:
+		case STI:
+		case LDI:
 		case LEA:
 		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
 			break;
@@ -1133,8 +1135,10 @@ void decodeStep(CPU_p cpu) {
 			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			break;
 		case ST:
+		case STI:
 		    dr = cpu->reg_file[dr];
 		case LD:
+		case LDI:
 		case LEA:
 		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			opn2 = NOP;
@@ -1147,8 +1151,8 @@ void decodeStep(CPU_p cpu) {
 			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case JSR:
-		    // only does JSRR
-		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
+		    // only does JSR
+		    opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
 			opn2 = NOP;
 			break;
 		case JMP:
