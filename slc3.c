@@ -855,9 +855,6 @@ int checkBEN(CPU_p cpu) {
               + (cpu->conCodes.p && PBIT(nzp));    
 }
 
-
-
-
 void flushPipeline(CPU_p cpu) {
     cpu->fbuff.pc = NOP;
     cpu->fbuff.ir = NOP;
@@ -1017,69 +1014,71 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
 
 // Execute + Eval Address
 void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
-    cpu->ebuff.op = cpu->dbuff.op;
-    cpu->ebuff.dr = cpu->dbuff.dr;
-    cpu->ebuff.pc = cpu->dbuff.pc;
-    cpu->alu_a = cpu->dbuff.opn1;
-    cpu->alu_b = cpu->dbuff.opn2;
-    
-    switch(cpu->ebuff.op) {
-        case ADD:
-            cpu->alu_r = cpu->alu_a + cpu->alu_b;
-            cpu->ebuff.result = cpu->alu_r;
-            break;
-        case AND:
-            cpu->alu_r = cpu->alu_a & cpu->alu_b;
-            cpu->ebuff.result = cpu->alu_r; 
-            break;
-        case NOT:
-            cpu->alu_r = ~cpu->alu_a;
-            break;
-        case BR:
-            // Stall until next OP doesnt write to reg
-            if (cpu->mbuff.pc == NOP) {
-                cpu->stalls[P_EX]++;
-                cpu->ebuff.op = NOP;
-                cpu->ebuff.dr = NOP;
-                cpu->ebuff.result = NOP;
-                cpu->ebuff.pc = NOP;
-                break;
+	cpu->ebuff.op = cpu->dbuff.op;
+	cpu->ebuff.dr = cpu->dbuff.dr;
+	cpu->ebuff.pc = cpu->dbuff.pc;
+	cpu->alu_a = cpu->dbuff.opn1;
+	cpu->alu_b = cpu->dbuff.opn2;
+	
+	switch(cpu->ebuff.op) {
+		case ADD:
+			cpu->alu_r = cpu->alu_a + cpu->alu_b;
+			cpu->ebuff.result = cpu->alu_r;
+			break;
+		case AND:
+			cpu->alu_r = cpu->alu_a & cpu->alu_b;
+			cpu->ebuff.result = cpu->alu_r; 
+			break;
+		case NOT:
+		    cpu->alu_r = ~cpu->alu_a;
+			break;
+		case BR:
+		    // Stall until next OP doesnt write to reg
+			if (cpu->mbuff.pc == NOP) {
+				cpu->stalls[P_EX]++;
+			    cpu->ebuff.op = NOP;
+			    cpu->ebuff.dr = NOP;
+			    cpu->ebuff.result = NOP;
+			    cpu->ebuff.pc = NOP;
+				break;
+			}
+			
+		    if (checkBEN(cpu)) {
+                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
+			    cpu->pc = cpu->ebuff.result;
+					
+				// flush pipeline and prefetch
+				flushPipeline(cpu);	
             }
-            
-            if (checkBEN(cpu)) {
-                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
-                cpu->pc = cpu->ebuff.result;
-                    
-                // flush pipeline and prefetch
-                flushPipeline(cpu);    
-            }
-            break;
-        case JSR:
-        case JMP:
-            cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
-            cpu->pc = cpu->ebuff.result;
-            flushPipeline(cpu);
-            break;
-        case ST:
-        case LD:
-        case LEA:
-            cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
-            break;
-        case LDR:
-        case STR:
-            cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
-            break;
-        case TRAP:
-            // Test for correctness
-            if(trap(cpu, win)) {
-                return;
-            }
-            break;
-        case RSV:
-            cpu->ebuff.result = cpu->dbuff.opn1;
-            cpu->ebuff.imb = cpu->dbuff.imb;
-            break;
-    }
+			break;
+		case JSR:
+		case JMP:
+		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
+		    cpu->pc = cpu->ebuff.result;
+			flushPipeline(cpu);
+			break;
+		case ST:
+		case LD:
+		case STI:
+		case LDI:
+		case LEA:
+		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
+			break;
+		case LDR:
+		case STR:
+		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
+			break;
+		case TRAP:
+		    // Test for correctness
+			if(trap(cpu, win)) {
+			    return;
+			}
+			break;
+		case RSV:
+			cpu->ebuff.result = cpu->dbuff.opn1;
+			cpu->ebuff.imb = cpu->dbuff.imb;
+		    break;
+	}
 }
 
 short checkRawHazards(CPU_p cpu, Register src) {
@@ -1124,47 +1123,48 @@ void decodeStep(CPU_p cpu) {
                     opn2 = cpu->reg_file[SRCREG2(cpu->fbuff.ir)];
                     cpu->stalls[P_ID] = checkRawHazardsTwoSrcs(cpu, SRCREG(cpu->fbuff.ir), SRCREG2(cpu->fbuff.ir));
             }
-            break;
-        case NOT:
-            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-            opn2 = SEXTIMMVAL(cpu->fbuff.ir);
-            cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-            break;
-        case BR:
-            opn1 = NZPBITS(cpu->fbuff.ir);
-            opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
-            break;
-        case ST:
-            dr = cpu->reg_file[dr];
-        case LD:
-        case LEA:
-            opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
-            opn2 = NOP;
-            break;
-        case STR:
-            dr = cpu->reg_file[dr];
-        case LDR:
-            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-            opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
-            cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-            break;
-        case JSR:
-            // only does JSRR
-            opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
-            opn2 = NOP;
-            break;
-        case JMP:
-            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-            opn2 = NOP;
-            cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-            break;
-        case TRAP:
-            opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
-            opn2 = NOP;
-            break;
-        case RSV:
-            cpu->dbuff.imb = IMMBIT(cpu->fbuff.ir);
-            
+			break;
+		case NOT:
+		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+			opn2 = SEXTIMMVAL(cpu->fbuff.ir);
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
+			break;
+		case BR:
+		    dr = NZPBITS(cpu->fbuff.ir);
+			opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
+			break;
+		case ST:
+		case STI:
+		    dr = cpu->reg_file[dr];
+		case LD:
+		case LDI:
+		case LEA:
+		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
+			opn2 = NOP;
+			break;
+		case STR:
+		    dr = cpu->reg_file[dr];
+		case LDR:
+		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
+			break;
+		case JSR:
+		    // only does JSR
+		    opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
+			opn2 = NOP;
+			break;
+		case JMP:
+		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+			opn2 = NOP;
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
+			break;
+		case TRAP:
+		    opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
+			opn2 = NOP;
+			break;
+		case RSV:
+		    cpu->dbuff.imb = IMMBIT(cpu->fbuff.ir);
             if (!IMMBIT(cpu->fbuff.ir)) {
                 opn1 = cpu->reg_file[DSTREG(cpu->fbuff.ir)];
                 cpu->stalls[P_ID] = checkRawHazards(cpu, DSTREG(cpu->fbuff.ir));
