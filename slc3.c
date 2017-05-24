@@ -68,6 +68,7 @@ char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
         return false;
     }
     cpu->pc = strtol(line, &t, HEX_MODE);
+    cpu->prefetch.nextPC = cpu->pc;
     temp = cpu->pc;
     while (!feof(theInFile)) {
         fscanf(theInFile, "%s", &line);
@@ -847,36 +848,36 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 
 int checkBEN(CPU_p cpu) {
     // much magic, such bad, wow!
-	Register nzp;
-	nzp = cpu->dbuff.opn1 << 9;
-	return (cpu->conCodes.n && NBIT(nzp))
+    Register nzp;
+    nzp = cpu->dbuff.opn1 << 9;
+    return (cpu->conCodes.n && NBIT(nzp))
               + (cpu->conCodes.z && ZBIT(nzp))
-              + (cpu->conCodes.p && PBIT(nzp));	
+              + (cpu->conCodes.p && PBIT(nzp));    
 }
 
 
 
 
 void flushPipeline(CPU_p cpu) {
-	cpu->fbuff.pc = NOP;
-	cpu->fbuff.ir = NOP;
-	cpu->fbuff.pc = NOP;
-	cpu->dbuff.op = NOP;
-	cpu->dbuff.dr = NOP;
-	cpu->dbuff.pc = NOP;
-	cpu->dbuff.opn1 = NOP;
-	cpu->dbuff.opn2 = NOP;
-	cpu->prefetch.index = MAX_PREFETCH;
+    cpu->fbuff.pc = NOP;
+    cpu->fbuff.ir = NOP;
+    cpu->fbuff.pc = NOP;
+    cpu->dbuff.op = NOP;
+    cpu->dbuff.dr = NOP;
+    cpu->dbuff.pc = NOP;
+    cpu->dbuff.opn1 = NOP;
+    cpu->dbuff.opn2 = NOP;
+    cpu->prefetch.index = MAX_PREFETCH;
 }
     
 void initPipeline(CPU_p cpu) {
     cpu->fbuff.pc = NOP;
-	cpu->fbuff.ir = NOP;
-	cpu->dbuff.op = NOP;
-	cpu->dbuff.dr = NOP;
-	cpu->dbuff.pc = NOP;
-	cpu->dbuff.opn1 = NOP;
-	cpu->dbuff.opn2 = NOP;
+    cpu->fbuff.ir = NOP;
+    cpu->dbuff.op = NOP;
+    cpu->dbuff.dr = NOP;
+    cpu->dbuff.pc = NOP;
+    cpu->dbuff.opn1 = NOP;
+    cpu->dbuff.opn2 = NOP;
     cpu->mbuff.pc = NOP;
     cpu->mbuff.dr = NOP;
     cpu->mbuff.imb = NOP;
@@ -888,30 +889,31 @@ void initPipeline(CPU_p cpu) {
     cpu->ebuff.result = NOP;
     cpu->ebuff.op = NOP;
     initStall(cpu);
-	cpu->prefetch.index = MAX_PREFETCH;
+    cpu->prefetch.index = MAX_PREFETCH;
     
 }
 
 // Write results to register
 void storeStep(CPU_p cpu, DEBUG_WIN_p win) {
-
+    cpu->mdr = cpu->mbuff.result;
+    cpu->dr_store = cpu->mbuff.dr;
     switch(cpu->mbuff.op) {
             case ADD:
             case AND:
             case NOT:
-			case LD:
+            case LD:
             case LDR:
-			case LDI:
+            case LDI:
                 cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
                 updateConCodes(cpu, cpu->mbuff.result);
                 break;
             case RSV:
                 if (!cpu->mbuff.imb) {
-					cpu->reg_file[SP_REG]--;
-				} else {
-					cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
-					cpu->reg_file[SP_REG]++;
-				}
+                    cpu->reg_file[SP_REG]--;
+                } else {
+                    cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
+                    cpu->reg_file[SP_REG]++;
+                }
                 break;
             }
     }
@@ -920,9 +922,9 @@ void storeStep(CPU_p cpu, DEBUG_WIN_p win) {
 
 // Memory access (LD/ST like commands)
 void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
-	cpu->mbuff.op = cpu->ebuff.op;
-	cpu->mbuff.dr = cpu->ebuff.dr;
-	cpu->mbuff.pc = cpu->ebuff.pc;
+    cpu->mbuff.op = cpu->ebuff.op;
+    cpu->mbuff.dr = cpu->ebuff.dr;
+    cpu->mbuff.pc = cpu->ebuff.pc;
     cpu->mbuff.result = cpu->ebuff.result;
     // implement stall for ten cycles
     switch(cpu->mbuff.op) {
@@ -1001,11 +1003,11 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
 
         case RSV:
             if (!cpu->ebuff.imb) {
-				memory[cpu->reg_file[SP_REG]-1] = cpu->ebuff.result; 
-			} else {
-				cpu->mbuff.result = memory[cpu->reg_file[SP_REG]];
-			}
-			cpu->mbuff.imb = cpu->ebuff.imb;
+                memory[cpu->reg_file[SP_REG]-1] = cpu->ebuff.result; 
+            } else {
+                cpu->mbuff.result = memory[cpu->reg_file[SP_REG]];
+            }
+            cpu->mbuff.imb = cpu->ebuff.imb;
         break;
         
     }
@@ -1015,181 +1017,181 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
 
 // Execute + Eval Address
 void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
-	cpu->ebuff.op = cpu->dbuff.op;
-	cpu->ebuff.dr = cpu->dbuff.dr;
-	cpu->ebuff.pc = cpu->dbuff.pc;
-	cpu->alu_a = cpu->dbuff.opn1;
-	cpu->alu_b = cpu->dbuff.opn2;
-	
-	switch(cpu->ebuff.op) {
-		case ADD:
-			cpu->alu_r = cpu->alu_a + cpu->alu_b;
-			cpu->ebuff.result = cpu->alu_r;
-			break;
-		case AND:
-			cpu->alu_r = cpu->alu_a & cpu->alu_b;
-			cpu->ebuff.result = cpu->alu_r; 
-			break;
-		case NOT:
-		    cpu->alu_r = ~cpu->alu_a;
-			break;
-		case BR:
-		    // Stall until next OP doesnt write to reg
-			if (cpu->mbuff.pc == NOP) {
-				cpu->stalls[P_EX]++;
-			    cpu->ebuff.op = NOP;
-			    cpu->ebuff.dr = NOP;
-			    cpu->ebuff.result = NOP;
-			    cpu->ebuff.pc = NOP;
-				break;
-			}
-			
-		    if (checkBEN(cpu)) {
-                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
-			    cpu->pc = cpu->ebuff.result;
-					
-				// flush pipeline and prefetch
-				flushPipeline(cpu);	
+    cpu->ebuff.op = cpu->dbuff.op;
+    cpu->ebuff.dr = cpu->dbuff.dr;
+    cpu->ebuff.pc = cpu->dbuff.pc;
+    cpu->alu_a = cpu->dbuff.opn1;
+    cpu->alu_b = cpu->dbuff.opn2;
+    
+    switch(cpu->ebuff.op) {
+        case ADD:
+            cpu->alu_r = cpu->alu_a + cpu->alu_b;
+            cpu->ebuff.result = cpu->alu_r;
+            break;
+        case AND:
+            cpu->alu_r = cpu->alu_a & cpu->alu_b;
+            cpu->ebuff.result = cpu->alu_r; 
+            break;
+        case NOT:
+            cpu->alu_r = ~cpu->alu_a;
+            break;
+        case BR:
+            // Stall until next OP doesnt write to reg
+            if (cpu->mbuff.pc == NOP) {
+                cpu->stalls[P_EX]++;
+                cpu->ebuff.op = NOP;
+                cpu->ebuff.dr = NOP;
+                cpu->ebuff.result = NOP;
+                cpu->ebuff.pc = NOP;
+                break;
             }
-			break;
-		case JSR:
-		case JMP:
-		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
-		    cpu->pc = cpu->ebuff.result;
-			flushPipeline(cpu);
-			break;
-		case ST:
-		case LD:
-		case LEA:
-		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
-			break;
-		case LDR:
-		case STR:
-		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
-			break;
-		case TRAP:
-		    // Test for correctness
-			if(trap(cpu, win)) {
-			    return;
-			}
-			break;
-		case RSV:
-			cpu->ebuff.result = cpu->dbuff.opn1;
-			cpu->ebuff.imb = cpu->dbuff.imb;
-		    break;
-	}
+            
+            if (checkBEN(cpu)) {
+                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
+                cpu->pc = cpu->ebuff.result;
+                    
+                // flush pipeline and prefetch
+                flushPipeline(cpu);    
+            }
+            break;
+        case JSR:
+        case JMP:
+            cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
+            cpu->pc = cpu->ebuff.result;
+            flushPipeline(cpu);
+            break;
+        case ST:
+        case LD:
+        case LEA:
+            cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
+            break;
+        case LDR:
+        case STR:
+            cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
+            break;
+        case TRAP:
+            // Test for correctness
+            if(trap(cpu, win)) {
+                return;
+            }
+            break;
+        case RSV:
+            cpu->ebuff.result = cpu->dbuff.opn1;
+            cpu->ebuff.imb = cpu->dbuff.imb;
+            break;
+    }
 }
 
 short checkRawHazards(CPU_p cpu, Register src) {
-	if (cpu->dbuff.dr == src && cpu->dbuff.pc) {
-		return 3;
-	} else if (cpu->ebuff.dr == src && cpu->ebuff.pc) {
-		return 2;
-	} else if (cpu->mbuff.dr == src && cpu->mbuff.pc) {
-		return 1;
-	}
-	
-	return 0;
-	
+    if (cpu->dbuff.dr == src && cpu->dbuff.pc) {
+        return 3;
+    } else if (cpu->ebuff.dr == src && cpu->ebuff.pc) {
+        return 2;
+    } else if (cpu->mbuff.dr == src && cpu->mbuff.pc) {
+        return 1;
+    }
+    
+    return 0;
+    
 }
 
 short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
-	if (cpu->dbuff.dr == src1 && cpu->dbuff.dr == src1 && cpu->dbuff.pc) {
-		return 3;
-	} else if (cpu->ebuff.dr == src1 && cpu->ebuff.dr == src1 && cpu->ebuff.pc) {
-		return 2;
-	} else if (cpu->mbuff.dr == src1 && cpu->mbuff.dr == src1 && cpu->mbuff.pc) {
-		return 1;
-	}
-	
-	return 0;
+    if (cpu->dbuff.dr == src1 && cpu->dbuff.dr == src1 && cpu->dbuff.pc) {
+        return 3;
+    } else if (cpu->ebuff.dr == src1 && cpu->ebuff.dr == src1 && cpu->ebuff.pc) {
+        return 2;
+    } else if (cpu->mbuff.dr == src1 && cpu->mbuff.dr == src1 && cpu->mbuff.pc) {
+        return 1;
+    }
+    
+    return 0;
 }
 
 // decode IR and get values out of registers
 void decodeStep(CPU_p cpu) {
-	Register opn1;
-	Register opn2;
-	Register dr = DSTREG(cpu->fbuff.ir);
-	switch((Register)OPCODE(cpu->fbuff.ir)) {
-	    case ADD:
-		case AND:
-		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-			if (IMMBIT(cpu->fbuff.ir)) {
+    Register opn1;
+    Register opn2;
+    Register dr = DSTREG(cpu->fbuff.ir);
+    switch((Register)OPCODE(cpu->fbuff.ir)) {
+        case ADD:
+        case AND:
+            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+            if (IMMBIT(cpu->fbuff.ir)) {
                     opn2 = SEXTIMMVAL(cpu->fbuff.ir);
-					cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-					
+                    cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
+                    
             } else {
                     opn2 = cpu->reg_file[SRCREG2(cpu->fbuff.ir)];
-					cpu->stalls[P_ID] = checkRawHazardsTwoSrcs(cpu, SRCREG(cpu->fbuff.ir), SRCREG2(cpu->fbuff.ir));
+                    cpu->stalls[P_ID] = checkRawHazardsTwoSrcs(cpu, SRCREG(cpu->fbuff.ir), SRCREG2(cpu->fbuff.ir));
             }
-			break;
-		case NOT:
-		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-			opn2 = SEXTIMMVAL(cpu->fbuff.ir);
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-			break;
-		case BR:
-		    opn1 = NZPBITS(cpu->fbuff.ir);
-			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
-			break;
-		case ST:
-		    dr = cpu->reg_file[dr];
-		case LD:
-		case LEA:
-		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
-			opn2 = NOP;
-			break;
-		case STR:
-		    dr = cpu->reg_file[dr];
-		case LDR:
-		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-			break;
-		case JSR:
-		    // only does JSRR
-		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
-			opn2 = NOP;
-			break;
-		case JMP:
-		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-			opn2 = NOP;
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-			break;
-		case TRAP:
-		    opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
-			opn2 = NOP;
-			break;
-		case RSV:
-		    cpu->dbuff.imb = IMMBIT(cpu->fbuff.ir);
-			
+            break;
+        case NOT:
+            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+            opn2 = SEXTIMMVAL(cpu->fbuff.ir);
+            cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
+            break;
+        case BR:
+            opn1 = NZPBITS(cpu->fbuff.ir);
+            opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
+            break;
+        case ST:
+            dr = cpu->reg_file[dr];
+        case LD:
+        case LEA:
+            opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
+            opn2 = NOP;
+            break;
+        case STR:
+            dr = cpu->reg_file[dr];
+        case LDR:
+            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+            opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
+            cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
+            break;
+        case JSR:
+            // only does JSRR
+            opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
+            opn2 = NOP;
+            break;
+        case JMP:
+            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+            opn2 = NOP;
+            cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
+            break;
+        case TRAP:
+            opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
+            opn2 = NOP;
+            break;
+        case RSV:
+            cpu->dbuff.imb = IMMBIT(cpu->fbuff.ir);
+            
             if (!IMMBIT(cpu->fbuff.ir)) {
-				opn1 = cpu->reg_file[DSTREG(cpu->fbuff.ir)];
-				cpu->stalls[P_ID] = checkRawHazards(cpu, DSTREG(cpu->fbuff.ir));
-			} else {
-				opn1 = NOP;
-			}
-			opn2 = NOP;
-			break;				
-	}
+                opn1 = cpu->reg_file[DSTREG(cpu->fbuff.ir)];
+                cpu->stalls[P_ID] = checkRawHazards(cpu, DSTREG(cpu->fbuff.ir));
+            } else {
+                opn1 = NOP;
+            }
+            opn2 = NOP;
+            break;                
+    }
     // Push NOP forward if stalling
-	if (cpu->stalls[P_ID]) {
-		    if (cpu->stalls[P_IF] < cpu->stalls[P_ID]) {
-				cpu->stalls[P_IF] = cpu->stalls[P_ID];
-			}
-			cpu->stalls[P_ID]--;
-			cpu->dbuff.op = NOP;
-			cpu->dbuff.dr = NOP;
-			cpu->dbuff.opn1 = NOP;
-			cpu->dbuff.opn2 = NOP;
-			cpu->dbuff.pc = NOP;
-	} else { // Not Stalled
-			cpu->dbuff.op = (Register)OPCODE(cpu->fbuff.ir);
-			cpu->dbuff.dr = dr;
-			cpu->dbuff.pc = cpu->fbuff.pc;
-			cpu->dbuff.opn1 = opn1;
-			cpu->dbuff.opn2 = opn2;
-	}
+    if (cpu->stalls[P_ID]) {
+            if (cpu->stalls[P_IF] < cpu->stalls[P_ID]) {
+                cpu->stalls[P_IF] = cpu->stalls[P_ID];
+            }
+            cpu->stalls[P_ID]--;
+            cpu->dbuff.op = NOP;
+            cpu->dbuff.dr = NOP;
+            cpu->dbuff.opn1 = NOP;
+            cpu->dbuff.opn2 = NOP;
+            cpu->dbuff.pc = NOP;
+    } else { // Not Stalled
+            cpu->dbuff.op = (Register)OPCODE(cpu->fbuff.ir);
+            cpu->dbuff.dr = dr;
+            cpu->dbuff.pc = cpu->fbuff.pc;
+            cpu->dbuff.opn1 = opn1;
+            cpu->dbuff.opn2 = opn2;
+    }
     
 }
 
@@ -1230,87 +1232,99 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p brea
     // call function to contains switch to handle each OP during this step
 
     // return reason for stopping (HALTED, BREAKPOINT, STEP_FINISHED)
-	
-	// TODO Add functions to handle stalls (set what is stalled and remove stalls)
-	// for situations such as memory handling and 
-	short memoryAccessed = false;
-	short memCycleCounter = 0;
-	short breakFlag = false;
-	cpu->prefetch.index = MAX_PREFETCH;
-	
-	do {
-		// Pre cycle work
-		// Instruction prefetch
-		if (cpu->prefetch.index == MAX_PREFETCH && !memoryAccessed) {
+    
+    // TODO Add functions to handle stalls (set what is stalled and remove stalls)
+    // for situations such as memory handling and 
+    short memoryAccessed = false;
+    short memCycleCounter = 0;
+    short breakFlag = false;
+    bool storeReached = false;
+    cpu->prefetch.index = MAX_PREFETCH;
+    bool foundNext = false;
+    
+    do {
+        // Pre cycle work
+        // Instruction prefetch
+        if (cpu->prefetch.index == MAX_PREFETCH && !memoryAccessed) {
             while(cpu->prefetch.index != 0) {
                 cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->pc + (MAX_PREFETCH - cpu->prefetch.index)];
                 cpu->prefetch.index--;
                 //Reflect Clock Cycles
             }
-		  // TODO handle instruction prefetch
-		}
-		  
-		  // stall handlers
-		  
-		  // check for breakpoint/set breakpoint flag
-			
-		// Store 
-		if (!cpu->stalls[P_STORE]) {
+          // TODO handle instruction prefetch
+        }
+          
+          // stall handlers
+          
+          // check for breakpoint/set breakpoint flag
+            
+        // Store 
+        if (!cpu->stalls[P_STORE]) {         
             storeStep(cpu, win);
-			// TODO add switch statement to handle each instruction
-			// separate method?
-		} else {
+            if(cpu->pc == cpu->mbuff.pc) {
+                foundNext = true;
+                
+            }
+            /*
+               if(cpu->mbuff.pc == initPC && mode == STEP_MODE) {
+                   break;
+               }
+            */
+            // TODO add switch statement to handle each instruction
+            // separate method?
+        } else {
             cpu->stalls[P_STORE]--;
         }
-		
-		// MEM
-		if (!cpu->stalls[P_MEM]) {
+        
+        // MEM
+        if (!cpu->stalls[P_MEM]) {
             memoryStep(cpu, win);
-			// TODO add switch statement to handle each instruction
-			// separate method?
-		} else {
-			cpu->stalls[P_MEM]--;
-			cpu->mbuff.op = NOP;
-			cpu->mbuff.dr = NOP;
-			cpu->mbuff.result = NOP;
-			cpu->mbuff.pc = NOP;
-		}
-		
-		// EX
-		if (!cpu->stalls[P_EX]) {
-			executeStep(cpu, win);
-		} else {
-			cpu->stalls[P_EX]--;
-			cpu->ebuff.op = NOP;
-			cpu->ebuff.dr = NOP;
-			cpu->ebuff.result = NOP;
-			cpu->ebuff.pc = NOP;
-		}
-		
-		
-		// ID/RR
-		if (!cpu->stalls[P_ID]) {
-			decodeStep(cpu);
-		} else {
-			cpu->stalls[P_ID]--;
-			cpu->dbuff.op = NOP;
-			cpu->dbuff.dr = NOP;
-			cpu->dbuff.opn1 = NOP;
-			cpu->dbuff.opn2 = NOP;
-			cpu->dbuff.pc = NOP;
-		}
-		
-		// IF
-		if (!cpu->stalls[P_IF]) {
-			// prefetch should be handled above and ready if this section is not stalled
-			cpu->fbuff.ir = cpu->prefetch.instructs[cpu->prefetch.index];
-			cpu->fbuff.pc = cpu->pc++;
-			cpu->prefetch.index++;
-		} else {
-			cpu->stalls[P_IF]--;
-		}
-			
-	} while (memoryAccessed ||(mode == RUN_MODE && !breakFlag));
+            // TODO add switch statement to handle each instruction
+            // separate method?
+        } else {
+            cpu->stalls[P_MEM]--;
+            cpu->mbuff.op = NOP;
+            cpu->mbuff.dr = NOP;
+            cpu->mbuff.result = NOP;
+            cpu->mbuff.pc = NOP;
+        }
+        
+        // EX
+        if (!cpu->stalls[P_EX]) {
+            executeStep(cpu, win);
+        } else {
+            cpu->stalls[P_EX]--;
+            cpu->ebuff.op = NOP;
+            cpu->ebuff.dr = NOP;
+            cpu->ebuff.result = NOP;
+            cpu->ebuff.pc = NOP;
+        }
+        
+        
+        // ID/RR
+        if (!cpu->stalls[P_ID]) {
+            decodeStep(cpu);
+        } else {
+            cpu->stalls[P_ID]--;
+            cpu->dbuff.op = NOP;
+            cpu->dbuff.dr = NOP;
+            cpu->dbuff.opn1 = NOP;
+            cpu->dbuff.opn2 = NOP;
+            cpu->dbuff.pc = NOP;
+        }
+        
+        // IF
+        if (!cpu->stalls[P_IF]) {
+            // prefetch should be handled above and ready if this section is not stalled
+            cpu->fbuff.ir = cpu->prefetch.instructs[cpu->prefetch.index];
+            cpu->fbuff.pc = cpu->prefetch.nextPC++;
+            cpu->prefetch.index++;
+        } else {
+            cpu->stalls[P_IF]--;
+        }
+
+    } while (memoryAccessed || (mode == STEP_MODE && !foundNext)); // (mode == RUN_MODE && !breakFlag) || || (mode == MICRO_STEP_MODE && (cpu->mbuff.pc == cpu->pc))
+    cpu->pc++;
 }
 
 int monitor(CPU_p cpu, DEBUG_WIN_p win) {
@@ -1323,7 +1337,8 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
     short orig = DEFAULT_MEM_ADDRESS;    
     char programLoaded = false;
     char input[INPUT_LIMIT];
-
+    
+    
     BREAKPOINT_p breakpoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
     initBreakPoints(breakpoints);
     win->breakpoints = breakpoints;
@@ -1338,7 +1353,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
             switch(input[MENU_SELECTION]) {
             case LOAD:
                 programLoaded = load(cpu, memory, win);
-                initPipeline(cpu);             
+                initPipeline(cpu);
                 break;
             case SAVE:
                 save(cpu, win);

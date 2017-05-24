@@ -103,6 +103,7 @@ Joshua Meigs
 
 #define STEP_MODE 0
 #define RUN_MODE 1
+#define MICRO_STEP_MODE 2
 #define MAX_PREFETCH 8
 
 #define NOP 0x0000
@@ -147,14 +148,15 @@ typedef struct {
 typedef struct {
     Register op : 4;
     Register dr;
-	Register imb: 1;
+    Register imb: 1;
     Register result;
     Register pc;
 } EMBUFF_s;
 
 typedef struct {
-	short index;
-	Register instructs[MAX_PREFETCH];
+    short index;
+    Register instructs[MAX_PREFETCH];
+    Register nextPC;
 } PREFETCH_s;
 
 typedef struct {
@@ -167,8 +169,8 @@ typedef struct {
     DBUFF_s dbuff;
     EMBUFF_s ebuff;
     EMBUFF_s mbuff;
-	PREFETCH_s prefetch;
-	short stalls[PIPELINE_PHASES];
+    PREFETCH_s prefetch;
+    short stalls[PIPELINE_PHASES];
     bool indirectFlag;
 } CPU_s;
 
