@@ -863,40 +863,26 @@ void flushPipeline(CPU_p cpu) {
 void storeStep(CPU_p cpu, DEBUG_WIN_p win) {
 
     switch(cpu->ebuff.op) {
-            case ADD:
+            case ADD:
             case AND:
             case NOT:
-                cpu->dbuff.dr = cpu->alu_r;
-                //updateConCodes(cpu, cpu->dbuff.dr);
-                break;
-            case LD:
+			case LD:
             case LDR:
-                cpu->dbuff.dr  = memory[cpu->dbuff.opn1 + cpu->dbuff.opn2];
-                //updateConCodes(cpu, cpu->dbuff.dr);
+			case LDI:
+                cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
+                updateConCodes(cpu, cpu->mbuff.result);
                 break;
-            case ST:
-                memory[cpu->pc + SEXTOFFSET9(cpu->ir)] = cpu->dbuff.dr;
-                break;
-            case STR:
-                memory[cpu->reg_file[SRCREG(cpu->ir)] + SEXTPCOFFSET6(cpu->ir)] = cpu->dbuff.dr;
-                break;
-
             case RSV:
-                if (cpu->dbuff.opn2) //if 1, push case
-                {
-                    cpu->dbuff.dr = memory[cpu->dbuff.dr]--; //make room on the stack R6
-                    memory[cpu->dbuff.dr] = cpu->dbuff.dr]; //push item on stack
-
-                } else { //[pop]
-                    cpu->dbuff.opn1 = memory[cpu->dbuff.dr];
-                    cpu->dbuff.dr = memory[cpu->dbuff.dr]++; //pop off stack.     
-
-                }
+                if (!cpu->mbuff.imb) {
+					cpu->reg_file[SP_REG]--;
+				} else {
+					cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
+					cpu->reg_file[SP_REG]++;
+				}
                 break;
             }
     }
-    
-}
+
 
 
 // Memory access (LD/ST like commands)
@@ -987,7 +973,14 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
         cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
         break;
         
-        case RSV:              
+
+        case RSV:
+            if (!cpu->ebuff.imb) {
+				memory[cpu->reg_file[SP_REG]-1] = cpu->ebuff.result; 
+			} else {
+				cpu->mbuff.result = memory[cpu->reg_file[SP_REG]];
+			}
+			cpu->mbuff.imb = cpu->ebuff.imb;
         break;
         
     }
@@ -1052,7 +1045,8 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			    return;
 			}
 		case RSV:
-		    
+			cpu->ebuff.result = cpu->dbuff.opn1;
+			cpu->ebuff.imb = cpu->dbuff.imb;
 		    break;
 	}
 }
@@ -1136,9 +1130,15 @@ void decodeStep(CPU_p cpu) {
 			opn2 = NOP;
 			break;
 		case RSV:
-		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			opn2 = IMMBIT(cpu->ir);
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
+		    cpu->dbuff.imb = IMMBIT(cpu->ir);
+			
+            if (!IMMBIT(cpu->ir)) {
+				opn1 = cpu->reg_file[DSTREG(cpu->ir)];
+				cpu->stalls[P_ID] = checkRawHazards(cpu, DSTREG(cpu->ir));
+			} else {
+				opn1 = NOP;
+			}
+			opn2 = NOP;
 			break;
 		
 		// Push NOP forward if stalling
