@@ -236,12 +236,12 @@ void updateBufferValues(DEBUG_WIN_p win, CPU_p cpu) {
     mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, cpu->ebuff.op%16);
     mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->ebuff.dr%16);
     mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.result);
-    mvwprintw(win->mainWin, EBUFF_PC_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.result);
+    mvwprintw(win->mainWin, EBUFF_PC_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.pc);
     
     mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, cpu->mbuff.op%16);
     mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->mbuff.dr%16);
     mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.result);
-    mvwprintw(win->mainWin, MBUFF_PC_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.result);
+    mvwprintw(win->mainWin, MBUFF_PC_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.pc);
     
     mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "x%.04X in R%d", cpu->mdr, cpu->dr_store%10);
 }

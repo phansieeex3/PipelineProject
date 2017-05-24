@@ -1177,7 +1177,7 @@ void decodeStep(CPU_p cpu) {
 		    if (cpu->stalls[P_IF] < cpu->stalls[P_ID]) {
 				cpu->stalls[P_IF] = cpu->stalls[P_ID];
 			}
-			
+			cpu->stalls[P_ID]--;
 			cpu->dbuff.op = NOP;
 			cpu->dbuff.dr = NOP;
 			cpu->dbuff.opn1 = NOP;
