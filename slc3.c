@@ -905,41 +905,89 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
 	cpu->mbuff.dr = cpu->ebuff.dr;
 	cpu->mbuff.pc = cpu->ebuff.pc;
     cpu->mbuff.result = cpu->ebuff.result;
-    
     // implement stall for ten cycles
     switch(cpu->mbuff.op) {
         
         case LD:
         case LDR:
-        cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        cpu->mbuff.result = memory[cpu->ebuff.result]; //stall for 10 cycles
+        if(cpu->stalls[P_MEM] == 1) {
+            cpu->mbuff.result = memory[cpu->ebuff.result];
+            cpu->stalls[P_MEM]--;
+        } else if(cpu->stalls[P_MEM] == 0) {
+            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
+            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+        } else {
+            cpu->stalls[P_MEM]--;
+        }
         break;      
         case LDI:
-        if(cpu->indirectFlag == true) {
-            cpu->mbuff.result = memory[cpu->ebuff.result];
-            cpu->indirectFlag = false;
+        if(cpu->stalls[P_MEM] == 1) {
+            if(cpu->indirectFlag == true) {
+                cpu->mbuff.result = memory[cpu->ebuff.result];
+                cpu->indirectFlag = false;
+                cpu->stalls[P_MEM]--;
+            } else {
+                cpu->ebuff.result = memory[cpu->ebuff.result];// stall for 20 cycles
+                cpu->indirectFlag = true;
+                cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
+                cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+            }
+        } else if(cpu->stalls[P_MEM] == 0) {          
+            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
+            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+        } else {
+            cpu->stalls[P_MEM]--;
         }
-        cpu->ebuff.result = memory[cpu->ebuff.result];// stall for 100 cycles
-        cpu->indirectFlag = true;
+        
+
         break;
 
         
         case ST:
         case STR:
-        memory[cpu->ebuff.result] = cpu->mbuff.dr; //stall for 10 cycles
+        if(cpu->stalls[P_MEM] == 1) {
+            memory[cpu->ebuff.result] = cpu->ebuff.dr;
+            cpu->stalls[P_MEM]--;
+        } else if(cpu->stalls[P_MEM] == 0) {
+            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
+            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+        } else {
+            cpu->stalls[P_MEM]--;
+        }
+        
         break;
         
         case STI:
+        
+        if(cpu->stalls[P_MEM] == 1) {
+            if(cpu->indirectFlag == true) {
+                cpu->mbuff.result = memory[cpu->ebuff.result];
+                cpu->indirectFlag = false;
+                cpu->stalls[P_MEM]--;
+            } else {
+                memory[cpu->ebuff.result] = cpu->ebuff.dr;// stall for 20 cycles
+                cpu->indirectFlag = true;
+                cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
+                cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+            }
+        } else if(cpu->stalls[P_MEM] == 0) {
+            memory[cpu->ebuff.result] = cpu->ebuff.dr;
+            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
+            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+        } else {
+            cpu->stalls[P_MEM]--;
+        }
+        
         if(cpu->indirectFlag == true) {
-            memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 100 cycles
+            memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
             cpu->indirectFlag = false;
         }
-        memory[cpu->ebuff.result] = cpu->mbuff.dr; // stall for 100 cycles
+        memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
         cpu->indirectFlag = true;
+        cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
         break;
         
-        case RSV:
-
+        case RSV:              
         break;
         
     }
