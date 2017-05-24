@@ -848,14 +848,11 @@ int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
 int checkBEN(CPU_p cpu) {
     // much magic, such bad, wow!
 	Register nzp;
-	nzp = cpu->dbuff.opn1 << 9;
+	nzp = cpu->dbuff.dr << 9;
 	return (cpu->conCodes.n && NBIT(nzp))
               + (cpu->conCodes.z && ZBIT(nzp))
               + (cpu->conCodes.p && PBIT(nzp));	
 }
-
-
-
 
 void flushPipeline(CPU_p cpu) {
 	cpu->fbuff.pc = NOP;
@@ -1045,7 +1042,7 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			}
 			
 		    if (checkBEN(cpu)) {
-                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
+                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
 			    cpu->pc = cpu->ebuff.result;
 					
 				// flush pipeline and prefetch
@@ -1131,8 +1128,8 @@ void decodeStep(CPU_p cpu) {
 			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case BR:
-		    opn1 = NZPBITS(cpu->fbuff.ir);
-			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
+		    dr = NZPBITS(cpu->fbuff.ir);
+			opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			break;
 		case ST:
 		case STI:
