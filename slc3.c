@@ -178,6 +178,13 @@ char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
     return programLoaded;
 }
 
+void initStall(CPU_p cpu) {
+    cpu->stalls[P_IF] = 0;
+    cpu->stalls[P_ID] = 0;
+    cpu->stalls[P_EX] = 0;
+    cpu->stalls[P_MEM] = 0;
+    cpu->stalls[P_STORE] = 0;
+}
 
 void updateBreakpoints(DEBUG_WIN_p win) {
     int i;
@@ -847,6 +854,9 @@ int checkBEN(CPU_p cpu) {
               + (cpu->conCodes.p && PBIT(nzp));	
 }
 
+
+
+
 void flushPipeline(CPU_p cpu) {
 	cpu->fbuff.pc = NOP;
 	cpu->fbuff.ir = NOP;
@@ -857,6 +867,29 @@ void flushPipeline(CPU_p cpu) {
 	cpu->dbuff.opn1 = NOP;
 	cpu->dbuff.opn2 = NOP;
 	cpu->prefetch.index = MAX_PREFETCH;
+}
+    
+void initPipeline(CPU_p cpu) {
+    cpu->fbuff.pc = NOP;
+	cpu->fbuff.ir = NOP;
+	cpu->dbuff.op = NOP;
+	cpu->dbuff.dr = NOP;
+	cpu->dbuff.pc = NOP;
+	cpu->dbuff.opn1 = NOP;
+	cpu->dbuff.opn2 = NOP;
+    cpu->mbuff.pc = NOP;
+    cpu->mbuff.dr = NOP;
+    cpu->mbuff.imb = NOP;
+    cpu->mbuff.result = NOP;
+    cpu->mbuff.op = NOP;
+    cpu->ebuff.pc = NOP;
+    cpu->ebuff.dr = NOP;
+    cpu->ebuff.imb = NOP;
+    cpu->ebuff.result = NOP;
+    cpu->ebuff.op = NOP;
+    initStall(cpu);
+	cpu->prefetch.index = MAX_PREFETCH;
+    
 }
 
 // Write results to register
@@ -899,11 +932,9 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
         if(cpu->stalls[P_MEM] == 1) {
             cpu->mbuff.result = memory[cpu->ebuff.result];
             cpu->stalls[P_MEM]--;
-        } else if(cpu->stalls[P_MEM] == 0) {
+        } else {
             cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
             cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        } else {
-            cpu->stalls[P_MEM]--;
         }
         break;      
         case LDI:
@@ -918,12 +949,10 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
                 cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
                 cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
             }
-        } else if(cpu->stalls[P_MEM] == 0) {          
+        } else {          
             cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
             cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        } else {
-            cpu->stalls[P_MEM]--;
-        }
+        } 
         
 
         break;
@@ -934,12 +963,10 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
         if(cpu->stalls[P_MEM] == 1) {
             memory[cpu->ebuff.result] = cpu->ebuff.dr;
             cpu->stalls[P_MEM]--;
-        } else if(cpu->stalls[P_MEM] == 0) {
+        } else {
             cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
             cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        } else {
-            cpu->stalls[P_MEM]--;
-        }
+        } 
         
         break;
         
@@ -956,13 +983,11 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
                 cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
                 cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
             }
-        } else if(cpu->stalls[P_MEM] == 0) {
+        } else {
             memory[cpu->ebuff.result] = cpu->ebuff.dr;
             cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
             cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        } else {
-            cpu->stalls[P_MEM]--;
-        }
+        } 
         
         if(cpu->indirectFlag == true) {
             memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
@@ -1052,11 +1077,11 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 }
 
 short checkRawHazards(CPU_p cpu, Register src) {
-	if (cpu->dbuff.dr == src) {
+	if (cpu->dbuff.dr == src && cpu->dbuff.pc) {
 		return 3;
-	} else if (cpu->ebuff.dr == src) {
+	} else if (cpu->ebuff.dr == src && cpu->ebuff.pc) {
 		return 2;
-	} else if (cpu->mbuff.dr == src) {
+	} else if (cpu->mbuff.dr == src && cpu->mbuff.pc) {
 		return 1;
 	}
 	
@@ -1065,11 +1090,11 @@ short checkRawHazards(CPU_p cpu, Register src) {
 }
 
 short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
-	if (cpu->dbuff.dr == src1 && cpu->dbuff.dr == src1) {
+	if (cpu->dbuff.dr == src1 && cpu->dbuff.dr == src1 && cpu->dbuff.pc) {
 		return 3;
-	} else if (cpu->ebuff.dr == src1 && cpu->ebuff.dr == src1) {
+	} else if (cpu->ebuff.dr == src1 && cpu->ebuff.dr == src1 && cpu->ebuff.pc) {
 		return 2;
-	} else if (cpu->mbuff.dr == src1 && cpu->mbuff.dr == src1) {
+	} else if (cpu->mbuff.dr == src1 && cpu->mbuff.dr == src1 && cpu->mbuff.pc) {
 		return 1;
 	}
 	
@@ -1079,83 +1104,83 @@ short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
 // decode IR and get values out of registers
 void decodeStep(CPU_p cpu) {
 	Register opn1;
-	Register opn2;
-	
-	switch((Register)OPCODE(cpu->ir)) {
+	Register opn2;    
+    
+	switch((Register)OPCODE(cpu->fbuff.ir)) {
 	    case ADD:
 		case AND:
-		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			if (IMMBIT(cpu->ir)) {
-                    opn2 = SEXTIMMVAL(cpu->ir);
-					cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
+		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+			if (IMMBIT(cpu->fbuff.ir)) {
+                    opn2 = SEXTIMMVAL(cpu->fbuff.ir);
+					cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 					
             } else {
-                    opn2 = cpu->reg_file[SRCREG2(cpu->ir)];
-					cpu->stalls[P_ID] = checkRawHazardsTwoSrcs(cpu, SRCREG(cpu->ir), SRCREG2(cpu->ir));
+                    opn2 = cpu->reg_file[SRCREG2(cpu->fbuff.ir)];
+					cpu->stalls[P_ID] = checkRawHazardsTwoSrcs(cpu, SRCREG(cpu->fbuff.ir), SRCREG2(cpu->fbuff.ir));
             }
 			break;
 		case NOT:
-		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			opn2 = SEXTIMMVAL(cpu->ir);
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
+		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+			opn2 = SEXTIMMVAL(cpu->fbuff.ir);
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case BR:
-		    opn1 = NZPBITS(cpu->ir);
-			opn2 = SEXTPCOFFSET9(cpu->ir);
+		    opn1 = NZPBITS(cpu->fbuff.ir);
+			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			break;
 		case ST:
 		case LD:
 		case LEA:
-		    opn1 = SEXTPCOFFSET9(cpu->ir);
+		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			opn2 = NOP;
 			break;
 		case STR:
 		case LDR:
-		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
-			opn2 = SEXTPCOFFSET9(cpu->ir);
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
+		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case JSR:
 		    // only does JSRR
-		    opn1 = SEXTPCOFFSET9(cpu->ir);
+		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			opn2 = NOP;
 			break;
 		case JMP:
-		    opn1 = cpu->reg_file[SRCREG(cpu->ir)];
+		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
 			opn2 = NOP;
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->ir));
+			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case TRAP:
-		    opn1 = ZEXTTRAPVECT(cpu->ir);
+		    opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
 			opn2 = NOP;
 			break;
 		case RSV:
-		    cpu->dbuff.imb = IMMBIT(cpu->ir);
+		    cpu->dbuff.imb = IMMBIT(cpu->fbuff.ir);
 			
-            if (!IMMBIT(cpu->ir)) {
-				opn1 = cpu->reg_file[DSTREG(cpu->ir)];
-				cpu->stalls[P_ID] = checkRawHazards(cpu, DSTREG(cpu->ir));
+            if (!IMMBIT(cpu->fbuff.ir)) {
+				opn1 = cpu->reg_file[DSTREG(cpu->fbuff.ir)];
+				cpu->stalls[P_ID] = checkRawHazards(cpu, DSTREG(cpu->fbuff.ir));
 			} else {
 				opn1 = NOP;
 			}
 			opn2 = NOP;
-			break;
-		
-		// Push NOP forward if stalling
-		if (cpu->stalls[P_ID]) {
+			break;				
+	}
+    // Push NOP forward if stalling
+	if (cpu->stalls[P_ID]) {
 			cpu->dbuff.op = NOP;
 			cpu->dbuff.dr = NOP;
 			cpu->dbuff.opn1 = NOP;
 			cpu->dbuff.opn2 = NOP;
 			cpu->dbuff.pc = NOP;
-		} else { // Not Stalled
-			cpu->dbuff.op = (Register)OPCODE(cpu->ir);
-			cpu->dbuff.dr = DSTREG(cpu->ir);
+	} else { // Not Stalled
+			cpu->dbuff.op = (Register)OPCODE(cpu->fbuff.ir);
+			cpu->dbuff.dr = DSTREG(cpu->fbuff.ir);
 			cpu->dbuff.pc = cpu->fbuff.pc;
 			cpu->dbuff.opn1 = opn1;
 			cpu->dbuff.opn2 = opn2;
-		}
 	}
+    
 }
 
 int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
@@ -1205,10 +1230,15 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p brea
 	
 	do {
 		// Pre cycle work
-		  // Instruction prefetch
-		  if (cpu->prefetch.index == MAX_PREFETCH && !memoryAccessed) {
-			  // TODO handle instruction prefetch
-		  }
+		// Instruction prefetch
+		if (cpu->prefetch.index == MAX_PREFETCH && !memoryAccessed) {
+            while(cpu->prefetch.index != 0) {
+                cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->pc + (MAX_PREFETCH - cpu->prefetch.index)];
+                cpu->prefetch.index--;
+                //Reflect Clock Cycles
+            }
+		  // TODO handle instruction prefetch
+		}
 		  
 		  // stall handlers
 		  
@@ -1216,14 +1246,24 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p brea
 			
 		// Store 
 		if (!cpu->stalls[P_STORE]) {
+            storeStep(cpu, win);
 			// TODO add switch statement to handle each instruction
 			// separate method?
-		}
+		} else {
+            cpu->stalls[P_STORE]--;
+        }
 		
 		// MEM
 		if (!cpu->stalls[P_MEM]) {
+            memoryStep(cpu, win);
 			// TODO add switch statement to handle each instruction
 			// separate method?
+		} else {
+			cpu->stalls[P_MEM]--;
+			cpu->mbuff.op = NOP;
+			cpu->mbuff.dr = NOP;
+			cpu->mbuff.result = NOP;
+			cpu->mbuff.pc = NOP;
 		}
 		
 		// EX
@@ -1290,12 +1330,13 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
             switch(input[MENU_SELECTION]) {
             case LOAD:
                 programLoaded = load(cpu, memory, win);
+                initPipeline(cpu);             
                 break;
             case SAVE:
                 save(cpu, win);
                 break;
             case STEP:
-                controller_pipelined(cpu, win, STEP, breakpoints);
+                controller_pipelined(cpu, win, STEP_MODE, breakpoints);
                 updateScreen(win, cpu, memory, programLoaded);
                 break;
             case RUN:
