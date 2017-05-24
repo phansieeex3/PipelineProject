@@ -1348,7 +1348,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
                 updateScreen(win, cpu, memory, programLoaded);
                 break;
             case RUN:
-                controller_pipelined(cpu, win, RUN, breakpoints);
+                controller_pipelined(cpu, win, RUN_MODE, breakpoints);
                 updateScreen(win, cpu, memory, programLoaded);
                 break;
             case DISPLAY_MEM:
