@@ -138,6 +138,7 @@ typedef struct {
 typedef struct {
     Register op : 4;
     Register dr : 3;
+	Register imb: 1;
     Register opn1;
     Register opn2;
     Register pc;
@@ -146,6 +147,7 @@ typedef struct {
 typedef struct {
     Register op : 4;
     Register dr : 3;
+	Register imb: 1;
     Register result;
     Register pc;
 } EMBUFF_s;
