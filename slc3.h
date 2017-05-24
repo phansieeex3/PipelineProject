@@ -137,7 +137,7 @@ typedef struct {
 
 typedef struct {
     Register op : 4;
-    Register dr : 3;
+    Register dr;
 	Register imb: 1;
     Register opn1;
     Register opn2;
@@ -146,7 +146,7 @@ typedef struct {
 
 typedef struct {
     Register op : 4;
-    Register dr : 3;
+    Register dr;
 	Register imb: 1;
     Register result;
     Register pc;

@@ -1104,9 +1104,9 @@ short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
 // decode IR and get values out of registers
 void decodeStep(CPU_p cpu) {
 	Register opn1;
-	Register opn2;    
-    
-	switch((Register)OPCODE(cpu->fbuff.ir)) {
+	Register opn2;
+	Register dr = DSTREG(cpu->ir);
+	switch((Register)OPCODE(cpu->ir)) {
 	    case ADD:
 		case AND:
 		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
@@ -1129,12 +1129,14 @@ void decodeStep(CPU_p cpu) {
 			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			break;
 		case ST:
+		    dr = cpu->reg_file[dr];
 		case LD:
 		case LEA:
 		    opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			opn2 = NOP;
 			break;
 		case STR:
+		    dr = cpu->reg_file[dr];
 		case LDR:
 		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
 			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
@@ -1175,7 +1177,7 @@ void decodeStep(CPU_p cpu) {
 			cpu->dbuff.pc = NOP;
 	} else { // Not Stalled
 			cpu->dbuff.op = (Register)OPCODE(cpu->fbuff.ir);
-			cpu->dbuff.dr = DSTREG(cpu->fbuff.ir);
+			cpu->dbuff.dr = dr;
 			cpu->dbuff.pc = cpu->fbuff.pc;
 			cpu->dbuff.opn1 = opn1;
 			cpu->dbuff.opn2 = opn2;
