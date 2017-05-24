@@ -895,7 +895,7 @@ void initPipeline(CPU_p cpu) {
 // Write results to register
 void storeStep(CPU_p cpu, DEBUG_WIN_p win) {
 
-    switch(cpu->ebuff.op) {
+    switch(cpu->mbuff.op) {
             case ADD:
             case AND:
             case NOT:
@@ -1032,6 +1032,7 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			break;
 		case NOT:
 		    cpu->alu_r = ~cpu->alu_a;
+			break;
 		case BR:
 		    // Stall until next OP doesnt write to reg
 			if (cpu->mbuff.pc == NOP) {
@@ -1056,6 +1057,7 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
 		    cpu->pc = cpu->ebuff.result;
 			flushPipeline(cpu);
+			break;
 		case ST:
 		case LD:
 		case LEA:
@@ -1064,11 +1066,13 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		case LDR:
 		case STR:
 		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
+			break;
 		case TRAP:
 		    // Test for correctness
 			if(trap(cpu, win)) {
 			    return;
 			}
+			break;
 		case RSV:
 			cpu->ebuff.result = cpu->dbuff.opn1;
 			cpu->ebuff.imb = cpu->dbuff.imb;
