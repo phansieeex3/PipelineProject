@@ -1174,6 +1174,10 @@ void decodeStep(CPU_p cpu) {
 	}
     // Push NOP forward if stalling
 	if (cpu->stalls[P_ID]) {
+		    if (cpu->stalls[P_IF] < cpu->stalls[P_ID]) {
+				cpu->stalls[P_IF] = cpu->stalls[P_ID];
+			}
+			
 			cpu->dbuff.op = NOP;
 			cpu->dbuff.dr = NOP;
 			cpu->dbuff.opn1 = NOP;
@@ -1304,8 +1308,6 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p brea
 			cpu->prefetch.index++;
 		} else {
 			cpu->stalls[P_IF]--;
-			cpu->fbuff.ir = NOP;
-			cpu->fbuff.pc = NOP;
 		}
 			
 	} while (memoryAccessed ||(mode == RUN_MODE && !breakFlag));
