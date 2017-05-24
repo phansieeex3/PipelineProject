@@ -1109,8 +1109,8 @@ short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
 void decodeStep(CPU_p cpu) {
 	Register opn1;
 	Register opn2;
-	Register dr = DSTREG(cpu->ir);
-	switch((Register)OPCODE(cpu->ir)) {
+	Register dr = DSTREG(cpu->fbuff.ir);
+	switch((Register)OPCODE(cpu->fbuff.ir)) {
 	    case ADD:
 		case AND:
 		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
