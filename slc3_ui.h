@@ -100,7 +100,7 @@ Joshua Meigs
 #define BUFF_LBL_END_Y 14
 
 #define FBUFF_BOARDER 1,22,3,15
-#define DBUFF_BOARDER 5,22,3,28
+#define DBUFF_BOARDER 5,22,3,31 // <-
 #define EBUFF_BOARDER 9,22,3,23
 #define MBUFF_BOARDER 13,22,3,23
 
@@ -123,6 +123,7 @@ Joshua Meigs
 
 
 #define HALF(x) ((x)/2)
+#define MOD16(x) ((x)%16)
 
 
 
