@@ -352,6 +352,42 @@ void updateMBuffer(DEBUG_WIN_p win, CPU_p cpu){
 	}
 }
 
+// Magical
+void printStallSymbols(DEBUG_WIN_p win, CPU_p cpu) {
+	if(cpu->stalls[P_IF]) {
+		wattron(win->mainWin, A_STANDOUT); 
+        mvwprintw(win->mainWin, 3, 18, " S ");//such magic
+        wattroff(win->mainWin, A_STANDOUT);   
+	} else {
+        mvwprintw(win->mainWin, 3, 18, "   ");//such magic
+	}
+	
+	if(cpu->stalls[P_ID]) {
+		wattron(win->mainWin, A_STANDOUT); 
+        mvwprintw(win->mainWin, 7, 18, " S ");//such magic
+        wattroff(win->mainWin, A_STANDOUT); 
+	} else {
+		mvwprintw(win->mainWin, 7, 18, "   ");//such magic
+	}
+	
+	if(cpu->stalls[P_EX]) {
+		wattron(win->mainWin, A_STANDOUT); 
+        mvwprintw(win->mainWin, 11, 18, " S ");//such magic
+        wattroff(win->mainWin, A_STANDOUT); 
+	} else {
+		mvwprintw(win->mainWin, 11, 18, "   ");//such magic
+	}
+	
+	if(cpu->stalls[P_MEM]) {
+		wattron(win->mainWin, A_STANDOUT); 
+        mvwprintw(win->mainWin, 15, 18, " S ");//such magic
+        wattroff(win->mainWin, A_STANDOUT);
+	} else {
+		mvwprintw(win->mainWin, 15, 18, "   ");//such magic
+	}
+}
+
+// These numbers are magic
 void updateBufferValues(DEBUG_WIN_p win, CPU_p cpu) {
     clearBufferBox(win, 1, 22);
 	printBox(win, FBUFF_BOARDER);
@@ -370,6 +406,7 @@ void updateBufferValues(DEBUG_WIN_p win, CPU_p cpu) {
 	updateMBuffer(win, cpu);
     
     mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "x%.04X in R%d", cpu->mdr, cpu->dr_store%10);
+	printStallSymbols(win, cpu);
 }
 
 void reprintBoarder(DEBUG_WIN_p win) {
