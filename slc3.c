@@ -1053,6 +1053,7 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
             }
 			break;
 		case JSR:
+            if(opn1)
 		case JMP:
 		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
 		    cpu->pc = cpu->ebuff.result;
@@ -1151,9 +1152,16 @@ void decodeStep(CPU_p cpu) {
 			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case JSR:
-		    // only does JSR
-		    opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
-			opn2 = NOP;
+            if(NBIT(cpu->fbuff.ir)) { //jsr
+                opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
+                opn2 = NOP;
+            }
+            else { //jsrr
+                opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
+                opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+
+            }
+		    
 			break;
 		case JMP:
 		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
