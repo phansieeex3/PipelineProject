@@ -511,7 +511,14 @@ void memoryStep(CPU_p cpu, bool finish) {
             }
             cpu->mbuff.imb = cpu->ebuff.imb;
         break; 
-    }  
+    } 
+
+    if (cpu->stalls[P_MEM])	{
+		cpu->mbuff.op = NOP;
+        cpu->mbuff.dr = NOP;
+        cpu->mbuff.result = NOP;
+        cpu->mbuff.pc = NOP;
+	}
 }
 
 // Execute + Eval Address
@@ -591,6 +598,7 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			cpu->ebuff.imb = cpu->dbuff.imb;
 		    break;
 	}
+	
 	
 	return false;
 }
