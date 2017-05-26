@@ -31,9 +31,9 @@ void updateConCodes(CPU_p cpu, short val) {
 
 // Evaluates the trapVector and performs the appropriate action
 // Returns 1 for a halt command, 0 otherwise
-bool trap(CPU_p cpu, DEBUG_WIN_p win) {
+bool trap(CPU_p cpu, DEBUG_WIN_p win, Register vector) {
     int i = 0;
-    switch (cpu->mar) {
+    switch (vector) {
     case GETCH:
         cpu->reg_file[IO_REG] = mvwgetch(win->ioWin, win->ioY, win->ioX);
         break;
@@ -535,8 +535,10 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		    cpu->alu_r = ~cpu->alu_a;
 			break;
 		case BR:
-		    // Stall until next OP doesnt write to reg
-			if (cpu->mbuff.pc != NOP) {
+
+			// Stall until next OP doesnt write to reg
+			// Ignore this step for a NOP BR (Branch on nothing)
+			if (cpu->mbuff.pc && cpu->ebuff.pc) {
 				cpu->stalls[P_EX]++;
 			    cpu->ebuff.op = NOP;
 			    cpu->ebuff.dr = NOP;
@@ -571,9 +573,17 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
 			break;
 		case TRAP:
-		    // Test for correctness
-			if(trap(cpu, win)) {
-			    return true;
+		    if (cpu->mbuff.pc && cpu->mbuff.op) {
+				cpu->stalls[P_EX]++;
+				cpu->ebuff.op = NOP;
+			    cpu->ebuff.dr = NOP;
+			    cpu->ebuff.result = NOP;
+			    cpu->ebuff.pc = NOP;
+			} else {
+				cpu->ebuff.result = cpu->dbuff.opn1;
+				if(trap(cpu, win, cpu->dbuff.opn1)) {
+					return true;
+				}
 			}
 			break;
 		case RSV:
@@ -811,7 +821,7 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
         memHandler(cpu);
 		
 		// Exit if Execute Step processes a HALT Trap
-		executeHandler(cpu, win);
+		if(executeHandler(cpu, win)) return false;
 
         decodeHandler(cpu);
         
@@ -879,7 +889,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
                 save(cpu, win);
                 break;
             case STEP:
-                controller_pipelined(cpu, win, STEP_MODE, breakpoints);
+                programLoaded = controller_pipelined(cpu, win, STEP_MODE, breakpoints);
 				updateNextInstruction(cpu);
                 updateScreen(win, cpu, memory, programLoaded);
                 break;
