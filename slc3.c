@@ -127,21 +127,14 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
         clearPrompt(win);
         if (file != NULL) {
             promptUser(win,
-                    "This file already exists, do you want to overwrite? \n Y/N \n",
+                    "File already exists, type Y to overwrite: ",
                     prompt);
             if (prompt[0] == 'Y' || prompt[0] == 'y') //ignore case
                     {
                 saveToFile(input, start, end);
                 break;
-            } else if (prompt[0] == 'N' || prompt[0] == 'n') {
-                clearPrompt(win);
-                promptUser(win, "Enter new file name: ", input);
-                file = fopen(input, "r");
-                fclose(file);
-                //saveToFile(input, memory,  start, end); 
-
             } else {
-                displayBoldMessage(win, "invalid response! Cancelling.");
+                displayBoldMessage(win, "Cancelling! Press any key.");
                 return;
             }
         }
@@ -206,13 +199,14 @@ int breakpointsContains(DEBUG_WIN_p win, int inputAddress) {
             return i;
         }
     }
-    return NULL_BREAKPOINT;
+    return BREAKPOINT_NOT_FOUND;
 }
 
-bool breakpointsReached(int* breakpoints, unsigned short pc) {
+// TODO need both?
+bool breakpointsReached(DEBUG_WIN_p win, Register pc) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
-        if(breakpoints[i] == pc) {
+        if(win->breakpoints->breakpointArr[i] == pc) {
             return true;
         }
     }
@@ -223,7 +217,7 @@ void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddr
     char* temp;
     unsigned short breakpointToAdd = strtol(inputAddress, &temp, HEX_MODE);
     short breakpointLocation = breakpointsContains(win, breakpointToAdd);
-    if(breakpointLocation > NULL_BREAKPOINT) {
+    if(breakpointLocation != BREAKPOINT_NOT_FOUND) {
         win->breakpoints->breakpointArr[breakpointLocation] = NULL_BREAKPOINT; 
         displayBoldMessage(win, "Breakpoint Removed");
         updateBreakpoints(win);
@@ -235,7 +229,8 @@ void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddr
         win->breakpoints->emptySpaces--;
         return;
     }
-    displayBoldMessage(win, "Error: Breakpoints ARR Full.");
+
+    displayBoldMessage(win, "Breakpoints full; cannot add more.");
 }
 
 void initBreakPoints(BREAKPOINT_p breakpoints) {
@@ -261,7 +256,8 @@ void save(CPU_p cpu, DEBUG_WIN_p win)
             || startAddress[strspn(startAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Error: Invalid address. Press any key to continue.");
+                "Invalid address. Press any key to continue.");
+		return;
     }
 
 
@@ -275,7 +271,8 @@ void save(CPU_p cpu, DEBUG_WIN_p win)
             || endAddress[strspn(endAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Error: Invalid address. Press any key to continue.");
+                "Invalid address. Press any key to continue.");
+		return;
     }
 
     promptUser(win, "File name: ", input);
@@ -284,7 +281,7 @@ void save(CPU_p cpu, DEBUG_WIN_p win)
             win);
 
     displayBoldMessage(win,
-            "Succesfull, New data saved to file.");
+            "Save Complete. Press any key to continue.");
 }
 
 void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
@@ -327,7 +324,8 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
             || inputAddress[strspn(inputAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Error: Invalid address. Press any key to continue.");
+                "Invalid address. Press any key to continue.");
+		return;
     }
 
     // Prompt for new value to place into memory
@@ -340,7 +338,8 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
             || input[strspn(input, "0123456789abcdefABCDEF")]
                     != 0) {
         displayBoldMessage(win,
-                "Error: Invalid Value. Press any key to continue.");
+                "Invalid value. Press any key to continue.");
+		return;
     }
 
     // Update Memory
@@ -365,7 +364,7 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
 {
     char inputAddress[INPUT_LIMIT];
     clearPrompt(win);
-    promptUser(win, "Address to Add A Breakpoint To: ", inputAddress);
+    promptUser(win, "Address: ", inputAddress);
     clearPrompt(win);
 
     // Validate address
@@ -373,7 +372,8 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
             || inputAddress[strspn(inputAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Error: Invalid address. Press any key to continue.");
+                "Invalid address. Press any key to continue.");
+	    return;
     }
     
     modifyBreakPoint(win, breakpoints, inputAddress);
@@ -804,8 +804,22 @@ void fetchHandler(CPU_p cpu) {
     }
 }
 
+Register getNextInstrToFinish(CPU_p cpu) {
+	if (cpu->mbuff.pc && cpu->mbuff.op) {
+		return cpu->mbuff.pc;
+	} else if (cpu->ebuff.pc && cpu->ebuff.op) {
+		return cpu->ebuff.pc;
+	} else if (cpu->dbuff.pc && cpu->dbuff.op) {
+		return cpu->dbuff.pc;
+	} else if (cpu->fbuff.pc && cpu->fbuff.ir) {
+		return cpu->fbuff.pc;
+	} else {
+		return cpu->prefetch.nextPC;
+	}
+}
+
 bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
-    short breakFlag = false;
+    bool breakFlag = false;
     bool foundNext = false;
 	
     do {         
@@ -836,25 +850,14 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
         }
 		
 		fetchHandler(cpu);
+		
+		breakFlag = breakpointsReached(win, getNextInstrToFinish(cpu));
+		
 		// TODO - mem accessed flag removed as not being used
 		// TODO - can add an accessed flag to prefetch and/or memory if needed
     } while ((mode == RUN_MODE && !breakFlag) || (mode == STEP_MODE && !foundNext));
 		
 	return true;
-}
-
-void updateNextInstruction(CPU_p cpu) {
-	if (cpu->mbuff.pc && cpu->mbuff.op) {
-		cpu->pc = cpu->mbuff.pc;
-	} else if (cpu->ebuff.pc && cpu->ebuff.op) {
-		cpu->pc = cpu->ebuff.pc;
-	} else if (cpu->dbuff.pc && cpu->dbuff.op) {
-		cpu->pc = cpu->dbuff.pc;
-	} else if (cpu->fbuff.pc && cpu->fbuff.ir) {
-		cpu->pc = cpu->fbuff.pc;
-	} else {
-		cpu->pc = cpu->prefetch.nextPC;
-	}
 }
 
 int monitor(CPU_p cpu, DEBUG_WIN_p win) {
@@ -881,47 +884,51 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 
         if (strlen(input) == SINGLE_CHAR) {
             switch(input[MENU_SELECTION]) {
-            case LOAD:
-                programLoaded = load(cpu, memory, win);
-                initPipeline(cpu);
-                break;
-            case SAVE:
-                save(cpu, win);
-                break;
-            case STEP:
-                programLoaded = controller_pipelined(cpu, win, STEP_MODE, breakpoints);
-				updateNextInstruction(cpu);
-                updateScreen(win, cpu, memory, programLoaded);
-                break;
-            case RUN:
-                programLoaded = controller_pipelined(cpu, win, RUN_MODE, breakpoints);
-				updateNextInstruction(cpu);
-                updateScreen(win, cpu, memory, programLoaded);
-                break;
-            case DISPLAY_MEM:
-                displayMemory(cpu, win, programLoaded);
-                break;
-            case EDIT:
-                edit(cpu, win, programLoaded, memory);
-                break;
-            case BREAKPOINT:
-                if(programLoaded) {
-                    breakPoint(cpu, win, breakpoints, programLoaded);
-                }
-                else {
-                    displayBoldMessage(win, "No program loaded! Press any key to continue.");
-                }
-                break;
-            case EXIT:
-                mvwprintw(win->mainWin, PROMPT_DISPLAY_Y,
-                PROMPT_DISPLAY_X, "Exit Selected! Press any key to continue.");
-                wgetch(win->mainWin);
-                return 0;
-            default: 
-                clearPrompt(win);
-                displayBoldMessage(win, "Invalid Menu Option");           
+				case LOAD:
+					programLoaded = load(cpu, memory, win);
+					initPipeline(cpu);
+					break;
+				case SAVE:
+					save(cpu, win);
+					break;
+				case STEP:
+					if (programLoaded) {
+						programLoaded = controller_pipelined(cpu, win, STEP_MODE, breakpoints);
+						cpu->pc = getNextInstrToFinish(cpu);
+					} else {
+						displayBoldMessage(win, "No program loaded! Press any key to continue.");
+					}
+					break;
+				case RUN:
+					if (programLoaded) {
+						programLoaded = controller_pipelined(cpu, win, RUN_MODE, breakpoints);
+						cpu->pc = getNextInstrToFinish(cpu);
+					} else {
+						displayBoldMessage(win, "No program loaded! Press any key to continue.");
+					}
+					break;
+				case DISPLAY_MEM:
+					displayMemory(cpu, win, programLoaded);
+					break;
+				case EDIT:
+					edit(cpu, win, programLoaded, memory);
+					break;
+				case BREAKPOINT:
+					if(programLoaded) {
+						breakPoint(cpu, win, breakpoints, programLoaded);
+					}
+					else {
+						displayBoldMessage(win, "No program loaded! Press any key to continue.");
+					}
+					break;
+				case EXIT:
+					displayBoldMessage(win, "Exit Selected! Press any key to continue.");
+					return 0;
+				default: 
+					displayBoldMessage(win, "Invalid Menu Option");           
             }
         }
+
     } //end for loop
 }
 

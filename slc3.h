@@ -81,6 +81,7 @@ Joshua Meigs
 #define MEM_CENTERED_OFFSET 7
 #define MAXBREAK 4
 #define NULL_BREAKPOINT 99999
+#define BREAKPOINT_NOT_FOUND -1
 
 // Menu Options
 #define LOAD '1'
