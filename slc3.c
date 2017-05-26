@@ -925,7 +925,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 					displayBoldMessage(win, "Exit Selected! Press any key to continue.");
 					return 0;
 				default: 
-					displayBoldMessage(win, "Invalid Menu Option");           
+					displayBoldMessage(win, "Invalid Menu Option");
             }
         }
 
