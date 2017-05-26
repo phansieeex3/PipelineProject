@@ -31,7 +31,7 @@ void updateConCodes(CPU_p cpu, short val) {
 
 // Evaluates the trapVector and performs the appropriate action
 // Returns 1 for a halt command, 0 otherwise
-int trap(CPU_p cpu, DEBUG_WIN_p win) {
+bool trap(CPU_p cpu, DEBUG_WIN_p win) {
     int i = 0;
     switch (cpu->mar) {
     case GETCH:
@@ -238,8 +238,6 @@ void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddr
     displayBoldMessage(win, "Error: Breakpoints ARR Full.");
 }
 
-
-
 void initBreakPoints(BREAKPOINT_p breakpoints) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
@@ -379,473 +377,9 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
     }
     
     modifyBreakPoint(win, breakpoints, inputAddress);
-    
 
     // Update screen to reflect changes
     updateScreen(win, cpu, memory, programLoaded); 
-}
-int controller(CPU_p cpu, DEBUG_WIN_p win) { //, FILE * file
-    // check to make sure both pointers are not NULLS
-    if (!cpu)
-        return NULL_CPU_POINTER;
-    if (!memory)
-        return NULL_MEMORY_POINTER;
-
-    unsigned short opcode, Rd, Rs1, Rs2, immed9;    // fields for the IR
-    unsigned short ben;
-    char *temp;
-    short state = FETCH;
-    char* message;
-    char readyToLeave = false;
-    char programLoaded = false;
-    char programRunning = false;
-    int displayMemAddress = DEFAULT_MEM_ADDRESS;
-    short orig = DEFAULT_MEM_ADDRESS;
-    
-    BREAKPOINT_p breakpoints = (BREAKPOINT_p) malloc(sizeof(BREAKPOINT_p));
-    initBreakPoints(breakpoints);
-    win->breakpoints = breakpoints;
-    for (;;) {   // efficient endless loop
-        char input[INPUT_LIMIT];
-        char inputAddress[INPUT_LIMIT];
-
-        //for save option
-        char startAddress[INPUT_LIMIT];
-        char endAddress[INPUT_LIMIT];
-
-        switch (state) {
-        case FETCH: // microstates 18, 33, 35 in the book    
-            do {
-                if (programRunning)
-                    break;
-
-                readyToLeave = false;
-                updateScreen(win, cpu, memory, programLoaded);
-                promptUser(win, "", input);
-
-                // Evaluate User Input
-                if (strlen(input) == SINGLE_CHAR) {
-                    switch (input[MENU_SELECTION]) {
-                    case LOAD:
-                        promptUser(win, "File Name: ", input);
-                        programLoaded = loadFile(input, cpu);
-                        if (programLoaded) {
-                            win->memAddress = cpu->pc;
-                            orig = cpu->pc;
-                            updateScreen(win, cpu, memory, programLoaded);
-                            printIoLabels(win);
-                            clearPrompt(win);
-                            clearIOWin(win);
-                            displayBoldMessage(win, "Load Successful!");
-                        } else {
-                            clearPrompt(win);
-                            displayBoldMessage(win,
-                                    "Error: Invalid File. Press any key to continue.");
-                        }
-                        break;
-
-                    case SAVE:
-                        // Prompt for start address
-
-                        clearPrompt(win);
-                        promptUser(win, "Start Address: ", startAddress);
-                        clearPrompt(win);
-
-                        // Validate address
-                        if (strlen(startAddress) > EXPECTED_HEX_DIGITS
-                                || startAddress[strspn(startAddress,
-                                        "0123456789abcdefABCDEF")] != 0) {
-                            displayBoldMessage(win,
-                                    "Error: Invalid address. Press any key to continue.");
-                            continue;
-                        }
-
-                        char *tempStart = inputAddress;
-
-                        // Prompt for end address (inclusive)
-                        clearPrompt(win);
-                        promptUser(win, "End Address: ", endAddress);
-                        clearPrompt(win);
-
-                        //Validate value
-                        if (strlen(endAddress) > EXPECTED_HEX_DIGITS
-                                || endAddress[strspn(endAddress,
-                                        "0123456789abcdefABCDEF")] != 0) {
-                            displayBoldMessage(win,
-                                    "Error: Invalid address. Press any key to continue.");
-                            continue;
-                        }
-
-
-                        char *tempEnd = input;
-
-                        promptUser(win, "File name: ", input);
-
-                        promptSaveToFile(cpu, input, startAddress, endAddress,
-                                win);
-
-                        displayBoldMessage(win,
-                                "Succesfull, New data saved to file.");
-
-                        break;
-                    case RSV:
-                        //using base register. 
-                         cpu->mar = cpu->reg_file[Rs1]; 
-                         //destination register is always r6       
-                    break;
-
-                    case STEP:
-                        if (!programLoaded) {
-                            displayBoldMessage(win,
-                                    "No program loaded! Press any key to continue.");
-                        } else {
-                            readyToLeave = true;
-                            continue;
-                        }
-
-                        break;
-                    case RUN:
-                        if (!programLoaded) {
-                            displayBoldMessage(win,
-                                    "No program loaded! Press any key to continue.");
-                        } else {
-                            readyToLeave = true;
-                            programRunning = true;
-                            continue;
-                        }
-
-                        break;
-                    case DISPLAY_MEM:
-                        clearPrompt(win);
-                        promptUser(win, "Starting Address: ", inputAddress);
-                        clearPrompt(win);
-
-                        if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
-                                || inputAddress[strspn(inputAddress,
-                                        "0123456789abcdefABCDEF")] != 0) {
-                            displayBoldMessage(win,
-                                    "Error: Invalid address. Press any key to continue.");
-                        } else {
-                            displayMemAddress = strtol(inputAddress, &temp,
-                                    HEX_MODE);
-                            win->memAddress = displayMemAddress;
-                            updateScreen(win, cpu, memory, programLoaded);
-                            continue;
-                        }
-                        break;
-                    case EDIT:
-                        // Prompt for Address to edit
-                        clearPrompt(win);
-                        promptUser(win, "Address to Edit: ", inputAddress);
-                        clearPrompt(win);
-
-                        // Validate address
-                        if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
-                                || inputAddress[strspn(inputAddress,
-                                        "0123456789abcdefABCDEF")] != 0) {
-                            displayBoldMessage(win,
-                                    "Error: Invalid address. Press any key to continue.");
-                            continue;
-                        }
-
-                        // Prompt for new value to place into memory
-                        clearPrompt(win);
-                        promptUser(win, "New Value: ", input);
-                        clearPrompt(win);
-
-                        // Validate value
-                        if (strlen(input) > EXPECTED_HEX_DIGITS
-                                || input[strspn(input, "0123456789abcdefABCDEF")]
-                                        != 0) {
-                            displayBoldMessage(win,
-                                    "Error: Invalid Value. Press any key to continue.");
-                            continue;
-                        }
-
-                        // Update Memory
-                        displayMemAddress = strtol(inputAddress, &temp,
-                                HEX_MODE);
-                        memory[displayMemAddress] = strtol(input, &temp,
-                                HEX_MODE);
-
-                        // Update Memory display                                
-                        displayMemAddress =
-                                (displayMemAddress >= MEM_CENTERED_OFFSET) ?
-                                        displayMemAddress
-                                                - MEM_CENTERED_OFFSET :
-                                        0;
-                        win->memAddress = displayMemAddress;
-
-                        // Update screen to reflect changes
-                        updateScreen(win, cpu, memory, programLoaded);
-
-                        break;
-                    case BREAKPOINT:
-                        if(programLoaded) {
-                           // Prompt for Address to edit
-                            clearPrompt(win);
-                            promptUser(win, "Address to Add A Breakpoint To: ", inputAddress);
-                            clearPrompt(win);
-
-                            // Validate address
-                            if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
-                                    || inputAddress[strspn(inputAddress,
-                                            "0123456789abcdefABCDEF")] != 0) {
-                                displayBoldMessage(win,
-                                        "Error: Invalid address. Press any key to continue.");
-                                continue;
-                            }
-                            
-                            modifyBreakPoint(win, breakpoints, inputAddress);
-                            
-
-                            // Update screen to reflect changes
-                            updateScreen(win, cpu, memory, programLoaded); 
-                        } 
-                        displayBoldMessage(win, "No program loaded! Press any key to continue.");
-                        break;
-                    
-                    case EXIT:
-                        mvwprintw(win->mainWin, PROMPT_DISPLAY_Y,
-                                PROMPT_DISPLAY_X,
-                                "Exit Selected! Press any key to continue.");
-                        wgetch(win->mainWin);
-                        return 0;
-                    default:
-                        clearPrompt(win);
-                        displayBoldMessage(win, "Invalid Menu option!");
-                    }
-                } else {
-                    clearPrompt(win);
-                    displayBoldMessage(win, "Invalid Menu option!");
-                }
-                // Refresh Screen
-                updateScreen(win, cpu, memory, programLoaded);
-
-                // Pause
-                mvwgetch(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X);
-                input[MENU_SELECTION] = '-';
-
-                clearPrompt(win);
-            } while (!readyToLeave || !programLoaded);
-
-            // get memory[PC] into IR - memory is a global array
-            cpu->mar = cpu->pc;
-            // increment PC
-            cpu->pc++;
-            cpu->mdr = memory[cpu->mar];
-            cpu->ir = cpu->mdr;
-            state = DECODE;
-            break;
-        case DECODE: // microstate 32
-
-            opcode = (unsigned short) OPCODE(cpu->ir);
-            Rd = DSTREG(cpu->ir);
-            Rs1 = SRCREG(cpu->ir);
-            Rs2 = SRCREG2(cpu->ir);
-
-            //sext immediate 9
-            immed9 = SEXTPCOFFSET9(cpu->ir);
-
-            ben = (cpu->conCodes.n && NBIT(cpu->ir))
-                    + (cpu->conCodes.z && ZBIT(cpu->ir))
-                    + (cpu->conCodes.p && PBIT(cpu->ir));
-
-            state = EVAL_ADDR;
-            break;
-        case EVAL_ADDR: // Look at the LD instruction to see microstate 2 example
-            switch (opcode) {
-            case ADD:
-            case AND:
-            case NOT:
-                break;
-
-            case TRAP:
-                // zext trapVector
-                cpu->mar = ZEXTTRAPVECT(cpu->ir);
-                break;
-            case LD:
-                cpu->mar = cpu->pc + immed9;
-                break;
-            case LDR:
-                cpu->mar = cpu->reg_file[Rs1] + SEXTPCOFFSET6(cpu->ir);
-                break;
-            case ST:
-                cpu->mar = cpu->pc + immed9;
-                break;
-            case STR:
-                cpu->mar = cpu->reg_file[Rs1] + SEXTPCOFFSET6(cpu->ir);
-                break;
-            case JMP: // and RET
-                //if BaseR == 111
-                if (cpu->reg_file[Rs1] == RETURN_REG) //ret case
-                        {
-                    cpu->pc = cpu->reg_file[RETURN_REG]; //go to register 7?
-                } else {
-                    cpu->pc = cpu->reg_file[Rs1];
-                }
-                break;
-            case LEA:
-                //loads DR = PC + SEXT(PCOffset9)
-                cpu->reg_file[Rd] = cpu->pc + immed9;
-                //setCC
-                updateConCodes(cpu, immed9);
-                break;
-            case JSR:
-                cpu->reg_file[RETURN_REG] = cpu->pc;
-                if (!NBIT(cpu->ir)) //check if JSRR incase if we implement JSR
-                        {
-                    //pc = baseR
-                    cpu->pc = cpu->reg_file[Rs1];
-                }
-                //implementing JSR here{
-                //cpu->pc = cpu->pc + SEXT(PCOffset11);
-
-                break;
-                //case RET: same case as JMP
-
-            case BR:
-                if (ben) {
-                    cpu->pc = cpu->pc + immed9;
-                }
-                break;
-            case RSV:
-                //using base register. 
-                cpu->mar = cpu->reg_file[Rs1];
-                //destination register is always r6
-
-                break;
-            default:
-                break;
-            }
-            state = FETCH_OP;
-            break;
-        case FETCH_OP: // Look at ST. Microstate 23 example of getting a value out of a register
-            switch (opcode) {
-            case ADD:
-                cpu->alu_a = cpu->reg_file[Rs1];
-                // Check bit 5
-                if (IMMBIT(cpu->ir)) {
-                    // sext immediate value
-                    cpu->alu_b = SEXTIMMVAL(cpu->ir);
-                } else {
-                    cpu->alu_b = cpu->reg_file[Rs2];
-                }
-                break;
-            case AND:
-                cpu->alu_a = cpu->reg_file[Rs1];
-                // Check bit 5
-                if (IMMBIT(cpu->ir)) {
-                    // sext immediate value
-                    cpu->alu_b = SEXTIMMVAL(cpu->ir);
-                } else {
-                    cpu->alu_b = cpu->reg_file[Rs2];
-                }
-                break;
-            case NOT:
-                cpu->alu_a = cpu->reg_file[Rs1];
-                break;
-            case TRAP:
-                cpu->mdr = memory[cpu->mar];
-                cpu->reg_file[RETURN_REG] = cpu->pc;
-                break;
-            case LD:
-            case LDR:
-                cpu->mdr = memory[cpu->mar];
-                break;
-            case ST:
-            case STR:
-                cpu->mdr = cpu->reg_file[Rd];
-                break;
-
-            case RSV: //not sure where this would be
-                break;
-
-            default:
-                break;
-            }
-            state = EXECUTE;
-            break;
-        case EXECUTE: // Note that ST does not have an execute microstate
-            switch (opcode) {
-            // do what the opcode is for, e.g. ADD
-            // in case of TRAP: call trap(int trap_vector) routine, see below for TRAP x25 (HALT)
-            case ADD:
-                cpu->alu_r = cpu->alu_a + cpu->alu_b;
-                break;
-            case AND:
-                cpu->alu_r = cpu->alu_a & cpu->alu_b;
-                break;
-            case NOT:
-                cpu->alu_r = ~cpu->alu_a;
-                break;
-
-            case TRAP:
-                // Halt if trap function returns 1
-                if (trap(cpu, win)) {
-                    // end current program
-                    cpu->pc = orig;
-                    state = FETCH;
-                    programLoaded = false;
-                    programRunning = false;
-                    displayBoldMessage(win,
-                            "Program HALT. Press any key to continue.");
-                    mvwgetch(win->mainWin, PROMPT_DISPLAY_Y, PROMPT_DISPLAY_X);
-                    clearPrompt(win);
-                }
-                break;
-
-            case RSV:
-
-                break;
-            default:
-                break;
-            }
-            state = STORE;
-            break;
-        case STORE: // Look at ST. Microstate 16 is the store to memory
-            switch (opcode) {
-            // write back to register or store MDR into memory
-            case ADD:
-            case AND:
-            case NOT:
-                cpu->reg_file[Rd] = cpu->alu_r;
-                updateConCodes(cpu, cpu->reg_file[Rd]);
-                break;
-            case LD:
-            case LDR:
-                cpu->reg_file[Rd] = cpu->mdr;
-                updateConCodes(cpu, cpu->reg_file[Rd]);
-                break;
-            case ST:
-                memory[cpu->mar] = cpu->mdr;
-                break;
-            case STR:
-                memory[cpu->mar] = cpu->mdr;
-                break;
-
-            case RSV:
-                if (IMMBIT(cpu->ir)) //if 1, push case
-                        {
-                    cpu->mdr = memory[cpu->reg_file[Rd]]--; //make room on the stack R6
-                    //memory[r6] <- Br
-                    memory[cpu->reg_file[Rd]] = cpu->reg_file[Rd]; //push item on stack
-
-                } else //pop case
-                {
-                    //Br <- memory[r6]
-                    cpu->reg_file[Rs1] = memory[cpu->reg_file[Rd]];
-                    cpu->mdr = memory[cpu->reg_file[Rd]]++; //pop off stack.     
-
-                }
-                break;
-            }
-
-            // do any clean up here in prep for the next complete cycle
-            state = FETCH;
-            break;
-        }
-    }
 }
 
 int checkBEN(CPU_p cpu) {
@@ -860,7 +394,6 @@ int checkBEN(CPU_p cpu) {
 void flushPipeline(CPU_p cpu) {
     cpu->fbuff.pc = NOP;
     cpu->fbuff.ir = NOP;
-    cpu->fbuff.pc = NOP;
     cpu->dbuff.op = NOP;
     cpu->dbuff.dr = NOP;
     cpu->dbuff.pc = NOP;
@@ -870,13 +403,6 @@ void flushPipeline(CPU_p cpu) {
 }
     
 void initPipeline(CPU_p cpu) {
-    cpu->fbuff.pc = NOP;
-    cpu->fbuff.ir = NOP;
-    cpu->dbuff.op = NOP;
-    cpu->dbuff.dr = NOP;
-    cpu->dbuff.pc = NOP;
-    cpu->dbuff.opn1 = NOP;
-    cpu->dbuff.opn2 = NOP;
     cpu->mbuff.pc = NOP;
     cpu->mbuff.dr = NOP;
     cpu->mbuff.imb = NOP;
@@ -887,119 +413,96 @@ void initPipeline(CPU_p cpu) {
     cpu->ebuff.imb = NOP;
     cpu->ebuff.result = NOP;
     cpu->ebuff.op = NOP;
+	flushPipeline(cpu);
     initStall(cpu);
-    cpu->prefetch.index = MAX_PREFETCH;
-    
 }
 
 // Write results to register
-void storeStep(CPU_p cpu, DEBUG_WIN_p win) {
+void storeStep(CPU_p cpu) {
     cpu->mdr = cpu->mbuff.result;
     cpu->dr_store = cpu->mbuff.dr;
     switch(cpu->mbuff.op) {
-            case ADD:
-            case AND:
-            case NOT:
-            case LD:
-            case LDR:
-            case LDI:
+        case ADD:
+        case AND:
+        case NOT:
+        case LD:
+        case LDR:
+        case LDI:
+            cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
+            updateConCodes(cpu, cpu->mbuff.result);
+            break;
+        case RSV:
+            if (!cpu->mbuff.imb) {
+                cpu->reg_file[SP_REG]--;
+            } else {
                 cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
-                updateConCodes(cpu, cpu->mbuff.result);
-                break;
-            case RSV:
-                if (!cpu->mbuff.imb) {
-                    cpu->reg_file[SP_REG]--;
-                } else {
-                    cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
-                    cpu->reg_file[SP_REG]++;
-                }
-                break;
+                cpu->reg_file[SP_REG]++;
             }
+            break;
     }
-
-
+}
 
 // Memory access (LD/ST like commands)
-void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
+void memoryStep(CPU_p cpu, bool finish) {
     cpu->mbuff.op = cpu->ebuff.op;
     cpu->mbuff.dr = cpu->ebuff.dr;
     cpu->mbuff.pc = cpu->ebuff.pc;
     cpu->mbuff.result = cpu->ebuff.result;
     // implement stall for ten cycles
     switch(cpu->mbuff.op) {
-        
         case LD:
         case LDR:
-        if(cpu->stalls[P_MEM] == 1) {
-            cpu->mbuff.result = memory[cpu->ebuff.result];
-            cpu->stalls[P_MEM]--;
-        } else {           
-            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
-            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        }
-        break;      
+			if(finish) {
+				cpu->mbuff.result = memory[cpu->ebuff.result];
+			} else {           
+				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+			}
+			break;      
         case LDI:
-        if(cpu->stalls[P_MEM] == 1) {
-            if(cpu->indirectFlag == true) {
-                cpu->mbuff.result = memory[cpu->ebuff.result];
-                cpu->indirectFlag = false;
-                cpu->stalls[P_MEM]--;
-            } else {
-                cpu->ebuff.result = memory[cpu->ebuff.result];// stall for 20 cycles
-                cpu->indirectFlag = true;
-                cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
-                cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-            }
-        } else {          
-            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
-            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        } 
-        
-
-        break;
-
-        
+			if(finish) {
+				if(cpu->indirectFlag == true) {
+					cpu->mbuff.result = memory[cpu->ebuff.result];
+					cpu->indirectFlag = false;
+				} else {
+					cpu->ebuff.result = memory[cpu->ebuff.result];// stall for 20 cycles
+					cpu->indirectFlag = true;
+					cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+				}
+			} else {          
+				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+			} 
+			break;
         case ST:
         case STR:
-        if(cpu->stalls[P_MEM] == 1) {
-            memory[cpu->ebuff.result] = cpu->ebuff.dr;
-            cpu->stalls[P_MEM]--;
-        } else {
-            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
-            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        } 
-        
-        break;
-        
+			if(finish) {
+				memory[cpu->ebuff.result] = cpu->ebuff.dr;
+			} else {
+				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+			} 
+			break;
         case STI:
-        
-        if(cpu->stalls[P_MEM] == 1) {
-            if(cpu->indirectFlag == true) {
-                cpu->mbuff.result = memory[cpu->ebuff.result];
-                cpu->indirectFlag = false;
-                cpu->stalls[P_MEM]--;
-            } else {
-                memory[cpu->ebuff.result] = cpu->ebuff.dr;// stall for 20 cycles
-                cpu->indirectFlag = true;
-                cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
-                cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-            }
-        } else {
-            memory[cpu->ebuff.result] = cpu->ebuff.dr;
-            cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
-            cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
-        } 
-        
-        if(cpu->indirectFlag == true) {
-            memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
-            cpu->indirectFlag = false;
-        }
-        memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
-        cpu->indirectFlag = true;
-        cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
-        break;
-        
-
+			if(finish) {
+				if(cpu->indirectFlag == true) {
+					cpu->mbuff.result = memory[cpu->ebuff.result];
+					cpu->indirectFlag = false;
+				} else {
+					memory[cpu->ebuff.result] = cpu->ebuff.dr;// stall for 20 cycles
+					cpu->indirectFlag = true;
+					cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+				}
+			} else {
+				memory[cpu->ebuff.result] = cpu->ebuff.dr;
+				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+			} 
+			
+			if(cpu->indirectFlag == true) {
+				memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
+				cpu->indirectFlag = false;
+			}
+			memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
+			cpu->indirectFlag = true;
+			cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+			break;
         case RSV:
             if (!cpu->ebuff.imb) {
                 memory[cpu->reg_file[SP_REG]-1] = cpu->ebuff.result; 
@@ -1007,15 +510,12 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
                 cpu->mbuff.result = memory[cpu->reg_file[SP_REG]];
             }
             cpu->mbuff.imb = cpu->ebuff.imb;
-        break;
-        
-    }
-    
-    
+        break; 
+    }  
 }
 
 // Execute + Eval Address
-void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
+bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 	cpu->ebuff.op = cpu->dbuff.op;
 	cpu->ebuff.dr = cpu->dbuff.dr;
 	cpu->ebuff.pc = cpu->dbuff.pc;
@@ -1036,7 +536,7 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			break;
 		case BR:
 		    // Stall until next OP doesnt write to reg
-			if (cpu->mbuff.pc == NOP) {
+			if (cpu->mbuff.pc != NOP) {
 				cpu->stalls[P_EX]++;
 			    cpu->ebuff.op = NOP;
 			    cpu->ebuff.dr = NOP;
@@ -1073,7 +573,7 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		case TRAP:
 		    // Test for correctness
 			if(trap(cpu, win)) {
-			    return;
+			    return true;
 			}
 			break;
 		case RSV:
@@ -1081,6 +581,8 @@ void executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			cpu->ebuff.imb = cpu->dbuff.imb;
 		    break;
 	}
+	
+	return false;
 }
 
 short checkRawHazards(CPU_p cpu, Register src) {
@@ -1178,10 +680,6 @@ void decodeStep(CPU_p cpu) {
     }
     // Push NOP forward if stalling
     if (cpu->stalls[P_ID]) {
-            if (cpu->stalls[P_IF] < cpu->stalls[P_ID]) {
-                cpu->stalls[P_IF] = cpu->stalls[P_ID];
-            }
-            cpu->stalls[P_ID]--;
             cpu->dbuff.op = NOP;
             cpu->dbuff.dr = NOP;
             cpu->dbuff.opn1 = NOP;
@@ -1197,130 +695,156 @@ void decodeStep(CPU_p cpu) {
     
 }
 
-int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
-    // main controller for pipelines
+void memHandler(CPU_p cpu) {
+    bool finish = false;
+	
+	if (cpu->stalls[P_MEM]) {
+		cpu->stalls[P_MEM]--;
+		if(!cpu->stalls[P_MEM]) {
+			finish = true;
+		}
+	}
+	
+	if (!cpu->stalls[P_MEM]) {
+	    memoryStep(cpu, finish);
+    } else {
+        cpu->mbuff.op = NOP;
+        cpu->mbuff.dr = NOP;
+        cpu->mbuff.result = NOP;
+        cpu->mbuff.pc = NOP;
+    }
+}
 
-    // Note: Simulate memory with 10 cycles of access time
-    // Need to handle RAWs with stalls/NOPs
-    // Need to handle branch hazards with not taken prediction and pipeline flushing
+bool executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
+    bool haltProgram = false;
+	
+	// If stalled, decrement counter
+	if (cpu->stalls[P_EX]) cpu->stalls[P_EX]--;
+	
+    if (!cpu->stalls[P_EX]) {
+		if (cpu->stalls[P_MEM]) {
+			cpu->stalls[P_EX] = cpu->stalls[P_MEM];
+		} else {
+            haltProgram = executeStep(cpu, win);
+		}
+    } else {
+		// Update stall and do nothing if next is stalled
+        if (cpu->stalls[P_MEM]) {
+		   if (cpu->stalls[P_EX] < cpu->stalls[P_MEM]){
+			    cpu->stalls[P_EX] = cpu->stalls[P_MEM];
+		   }
+		} else { // Push NOP forward otherwise
+			cpu->ebuff.op = NOP;
+			cpu->ebuff.dr = NOP;
+			cpu->ebuff.result = NOP;
+			cpu->ebuff.pc = NOP;
+		}
+    }
+		
+	return haltProgram;
+}
 
-    // do/while not halt or not breakpoint or not step finished(still need to deal with mem cycles, so @ next PC)
-    // Prefetch (handle instruction prefetch)
+void decodeHandler(CPU_p cpu) {
+	// If stalled, decrement counter
+	if (cpu->stalls[P_ID]) cpu->stalls[P_ID]--;
+	
+    if (!cpu->stalls[P_ID]) {
+        if (cpu->stalls[P_EX]) {
+			cpu->stalls[P_ID] = cpu->stalls[P_EX];
+		} else {
+		    decodeStep(cpu);
+		}
+        } else {
+		// Update stall and do nothing if next is stalled
+            if (cpu->stalls[P_EX]) {
+		    if (cpu->stalls[P_ID] < cpu->stalls[P_EX]) { 
+				cpu->stalls[P_ID] = cpu->stalls[P_EX];
+			}
+		} else { // Push NOP forward otherwise
+			cpu->dbuff.op = NOP;
+			cpu->dbuff.dr = NOP;
+			cpu->dbuff.opn1 = NOP;
+			cpu->dbuff.opn2 = NOP;
+			cpu->dbuff.pc = NOP;
+		}
+    }
+}
 
-    // Store
+void fetchHandler(CPU_p cpu) {
+	// If stalled, decrement counter
+	if (cpu->stalls[P_IF]) cpu->stalls[P_IF]--;
+		
+    if (!cpu->stalls[P_IF]) {
+         if (cpu->stalls[P_ID]) {
+			cpu->stalls[P_IF] = cpu->stalls[P_ID];
+		} else {
+			cpu->fbuff.ir = cpu->prefetch.instructs[cpu->prefetch.index];
+			cpu->fbuff.pc = cpu->prefetch.nextPC++;
+			cpu->prefetch.index++;
+		}
+    } else {
+        if (cpu->stalls[P_ID]) {
+			if (cpu->stalls[P_IF] < cpu->stalls[P_ID]) {
+		        cpu->stalls[P_IF] = cpu->stalls[P_ID];
+		    }
+	    } else { // Push NOP forward otherwise
+		    cpu->fbuff.ir = NOP;
+            cpu->fbuff.pc = NOP;
+	    }	
+    }
+}
 
-    // Memory
-    // check: is Stalled? push nop forward and restart loop
-    // call function to contains switch to handle each OP during this step
-
-    // Execute
-    // check: is Stalled? push nop forward and restart loop
-    // call function to contains switch to handle each OP during this step
-
-    // Branch taken?
-    // Flush pipeline(DBUFF, FBUFF set to NOP)
-    // Update current PC for fetch
-    // reset instruction prefetch queue?
-
-    // Decode/Reg
-    // check: is Stalled? push nop forward and restart loop
-    // call function to contains switch to handle each OP during this step
-
-    // RAW detected (DR = prev Sr1 or Sr2)?
-    // Stall (3 NOPs) (counter that adds NOPs to DBUFF 3 cycles in a row)
-
-    // Fetch
-    // check: is Stalled? push nop forward and restart loop
-    // call function to contains switch to handle each OP during this step
-
-    // return reason for stopping (HALTED, BREAKPOINT, STEP_FINISHED)
-    
-    // TODO Add functions to handle stalls (set what is stalled and remove stalls)
-    // for situations such as memory handling and 
-    short memoryAccessed = false;
-    short memCycleCounter = 0;
+bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
     short breakFlag = false;
-    bool storeReached = false;
-    
     bool foundNext = false;
-    do {
-        // Pre cycle work
+	
+    do {         
+        // Store/Write Back
+		storeStep(cpu);
+        
+		// If next pc for step was used in Store
+		// flag that it was found to end step after this cycle
+		if(cpu->pc == cpu->mbuff.pc) {
+            foundNext = true;                  
+        }
+
+        memHandler(cpu);
+		
+		// Exit if Execute Step processes a HALT Trap
+		executeHandler(cpu, win);
+
+        decodeHandler(cpu);
+        
         // Instruction prefetch
-        if (cpu->prefetch.index == MAX_PREFETCH && !memoryAccessed) {
+        if (cpu->prefetch.index == MAX_PREFETCH) {
             
             while(cpu->prefetch.index > 0) {
                 cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->pc + (MAX_PREFETCH - cpu->prefetch.index)];              
                 cpu->prefetch.index--;               
-                //Reflect Clock Cycles
+                //cpu->stalls[P_IF]+= MAX_PREFETCH * MEMORY_ACCESS_STALL_TIME;
             }         
-          // TODO handle instruction prefetch
         }
-         
-          // stall handlers
-          
-          // check for breakpoint/set breakpoint flag
-            
-        // Store 
-        if (!cpu->stalls[P_STORE]) {         
-            storeStep(cpu, win);
-            if(cpu->pc == cpu->mbuff.pc) {
-                foundNext = true;  
-                cpu->pc++;   //If Store is done, increment the arrow pc by one              
-            }
-            // TODO add switch statement to handle each instruction
-            // separate method?
-        } else {
-            cpu->stalls[P_STORE]--;
-        }
-        
-        // MEM
-        if (!cpu->stalls[P_MEM]) {
-            memoryStep(cpu, win);
-            // TODO add switch statement to handle each instruction
-            // separate method?
-        } else {
-            cpu->stalls[P_MEM]--;
-            cpu->mbuff.op = NOP;
-            cpu->mbuff.dr = NOP;
-            cpu->mbuff.result = NOP;
-            cpu->mbuff.pc = NOP;
-        }
-        
-        // EX
-        if (!cpu->stalls[P_EX]) {
-            executeStep(cpu, win);
-        } else {
-            cpu->stalls[P_EX]--;
-            cpu->ebuff.op = NOP;
-            cpu->ebuff.dr = NOP;
-            cpu->ebuff.result = NOP;
-            cpu->ebuff.pc = NOP;
-        }
-        
-        
-        // ID/RR
-        if (!cpu->stalls[P_ID]) {
-            decodeStep(cpu);
-        } else {
-            cpu->stalls[P_ID]--;
-            cpu->dbuff.op = NOP;
-            cpu->dbuff.dr = NOP;
-            cpu->dbuff.opn1 = NOP;
-            cpu->dbuff.opn2 = NOP;
-            cpu->dbuff.pc = NOP;
-        }
-        
-        // IF
-        if (!cpu->stalls[P_IF]) {
-            // prefetch should be handled above and ready if this section is not stalled
-            cpu->fbuff.ir = cpu->prefetch.instructs[cpu->prefetch.index];
-            cpu->fbuff.pc = cpu->prefetch.nextPC++;
-            cpu->prefetch.index++;
-        } else {
-            cpu->stalls[P_IF]--;
-        }
+		
+		fetchHandler(cpu);
+		// TODO - mem accessed flag removed as not being used
+		// TODO - can add an accessed flag to prefetch and/or memory if needed
+    } while ((mode == RUN_MODE && !breakFlag) || (mode == STEP_MODE && !foundNext));
+		
+	return true;
+}
 
-    } while (memoryAccessed || (mode != MICRO_STEP_MODE)); // (mode == RUN_MODE && !breakFlag) || || (mode == MICRO_STEP_MODE && (cpu->mbuff.pc == cpu->pc))
+void updateNextInstruction(CPU_p cpu) {
+	if (cpu->mbuff.pc && cpu->mbuff.op) {
+		cpu->pc = cpu->mbuff.pc;
+	} else if (cpu->ebuff.pc && cpu->ebuff.op) {
+		cpu->pc = cpu->ebuff.pc;
+	} else if (cpu->dbuff.pc && cpu->dbuff.op) {
+		cpu->pc = cpu->dbuff.pc;
+	} else if (cpu->fbuff.pc && cpu->fbuff.ir) {
+		cpu->pc = cpu->fbuff.pc;
+	} else {
+		cpu->pc = cpu->prefetch.nextPC;
+	}
 }
 
 int monitor(CPU_p cpu, DEBUG_WIN_p win) {
@@ -1343,7 +867,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
     {
         //showScreen
         updateScreen(win, cpu, memory, programLoaded);
-        promptUser(win, "", input);
+        promptUser(win, "", input); 
 
         if (strlen(input) == SINGLE_CHAR) {
             switch(input[MENU_SELECTION]) {
@@ -1355,11 +879,13 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
                 save(cpu, win);
                 break;
             case STEP:
-                controller_pipelined(cpu, win, MICRO_STEP_MODE, breakpoints);
+                controller_pipelined(cpu, win, STEP_MODE, breakpoints);
+				updateNextInstruction(cpu);
                 updateScreen(win, cpu, memory, programLoaded);
                 break;
             case RUN:
-                controller_pipelined(cpu, win, RUN_MODE, breakpoints);
+                programLoaded = controller_pipelined(cpu, win, RUN_MODE, breakpoints);
+				updateNextInstruction(cpu);
                 updateScreen(win, cpu, memory, programLoaded);
                 break;
             case DISPLAY_MEM:
@@ -1386,9 +912,6 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
                 displayBoldMessage(win, "Invalid Menu Option");           
             }
         }
-
-
-
     } //end for loop
 }
 
