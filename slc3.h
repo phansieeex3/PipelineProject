@@ -50,9 +50,9 @@ Joshua Meigs
 #define SRCREG(instr)  (instr >> 6 & 0x0007)
 #define SRCREG2(instr)  (instr & 0x0007)
 #define IMMBIT(instr)  ((instr & 0x0020) >> 5) 
-#define NBIT(instr)  ((instr & 0x0800) >> 11) 
-#define ZBIT(instr)  ((instr & 0x0400) >> 10) 
-#define PBIT(instr)  ((instr & 0x0200) >> 9)
+#define NBIT(instr)  (instr & 0x0004) 
+#define ZBIT(instr)  (instr & 0x0002)
+#define PBIT(instr)  (instr & 0x0001)
 #define NZPBITS(instr) ((instr & 0x0E00) >> 9)
  
 // ZEXT trap
@@ -81,6 +81,7 @@ Joshua Meigs
 #define MEM_CENTERED_OFFSET 7
 #define MAXBREAK 4
 #define NULL_BREAKPOINT 99999
+#define BREAKPOINT_NOT_FOUND -1
 
 // Menu Options
 #define LOAD '1'
@@ -104,6 +105,7 @@ Joshua Meigs
 
 #define STEP_MODE 0
 #define RUN_MODE 1
+#define MICRO_STEP_MODE 2
 #define MAX_PREFETCH 8
 
 #define NOP 0x0000
@@ -148,14 +150,15 @@ typedef struct {
 typedef struct {
     Register op : 4;
     Register dr;
-	Register imb: 1;
+    Register imb: 1;
     Register result;
     Register pc;
 } EMBUFF_s;
 
 typedef struct {
-	short index;
-	Register instructs[MAX_PREFETCH];
+    short index;
+    Register instructs[MAX_PREFETCH];
+    Register nextPC;
 } PREFETCH_s;
 
 typedef struct {
@@ -168,8 +171,8 @@ typedef struct {
     DBUFF_s dbuff;
     EMBUFF_s ebuff;
     EMBUFF_s mbuff;
-	PREFETCH_s prefetch;
-	short stalls[PIPELINE_PHASES];
+    PREFETCH_s prefetch;
+    short stalls[PIPELINE_PHASES];
     bool indirectFlag;
 } CPU_s;
 
