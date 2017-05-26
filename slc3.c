@@ -566,11 +566,11 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		case STI:
 		case LDI:
 		case LEA:
-		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
+		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
 			break;
 		case LDR:
 		case STR:
-		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
+		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2 + 1;
 			break;
 		case TRAP:
 		    if (cpu->mbuff.pc && cpu->mbuff.op) {
@@ -759,23 +759,23 @@ void decodeHandler(CPU_p cpu) {
 	if (cpu->stalls[P_ID]) cpu->stalls[P_ID]--;
 	
     if (!cpu->stalls[P_ID]) {
-        if (cpu->stalls[P_EX]) {
+		if (cpu->stalls[P_EX]) {
 			cpu->stalls[P_ID] = cpu->stalls[P_EX];
 		} else {
-		    decodeStep(cpu);
+			decodeStep(cpu);
 		}
-        } else {
+    } else {
 		// Update stall and do nothing if next is stalled
-            if (cpu->stalls[P_EX]) {
+        if (cpu->stalls[P_EX]) {
 		    if (cpu->stalls[P_ID] < cpu->stalls[P_EX]) { 
 				cpu->stalls[P_ID] = cpu->stalls[P_EX];
 			}
-		} else { // Push NOP forward otherwise
-			cpu->dbuff.op = NOP;
-			cpu->dbuff.dr = NOP;
-			cpu->dbuff.opn1 = NOP;
-			cpu->dbuff.opn2 = NOP;
-			cpu->dbuff.pc = NOP;
+	    } else { // Push NOP forward otherwise
+		    cpu->dbuff.op = NOP;
+		    cpu->dbuff.dr = NOP;
+		    cpu->dbuff.opn1 = NOP;
+		    cpu->dbuff.opn2 = NOP;
+		    cpu->dbuff.pc = NOP;
 		}
     }
 }

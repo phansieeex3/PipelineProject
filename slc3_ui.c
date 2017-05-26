@@ -176,6 +176,7 @@ void updateDBuffer(DEBUG_WIN_p win, CPU_p cpu){
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X+3, HEX_OUT_FORMAT, cpu->dbuff.pc);
 				break;
 			default:
+			    mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OPN1: OPN2: PC:");
 			    mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, cpu->dbuff.op%16);
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->dbuff.dr%16);
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn1);
