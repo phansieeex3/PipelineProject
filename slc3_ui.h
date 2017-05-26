@@ -120,7 +120,15 @@ Joshua Meigs
 #define MBUFF_RESULT_VAL_Y_X 15,31
 #define MBUFF_PC_VAL_Y_X     15,39
 
+#define FBUFF_STALL_Y_X 3,18
+#define DBUFF_STALL_Y_X 7,18
+#define EBUFF_STALL_Y_X 11,18
+#define MBUFF_STALL_Y_X 15,18
 
+#define FBUFF_CLEAR_START 1,21
+#define DBUFF_CLEAR_START 5,21
+#define EBUFF_CLEAR_START 9,21
+#define MBUFF_CLEAR_START 13,21
 
 #define HALF(x) ((x)/2)
 #define MOD16(x) ((x)%16)

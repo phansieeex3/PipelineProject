@@ -352,56 +352,54 @@ void updateMBuffer(DEBUG_WIN_p win, CPU_p cpu){
 	}
 }
 
-// Magical
 void printStallSymbols(DEBUG_WIN_p win, CPU_p cpu) {
 	if(cpu->stalls[P_IF]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, 3, 18, " S ");//such magic
+        mvwprintw(win->mainWin, FBUFF_STALL_Y_X, " S ");
         wattroff(win->mainWin, A_STANDOUT);   
 	} else {
-        mvwprintw(win->mainWin, 3, 18, "   ");//such magic
+        mvwprintw(win->mainWin, FBUFF_STALL_Y_X, "   ");
 	}
 	
 	if(cpu->stalls[P_ID]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, 7, 18, " S ");//such magic
+        mvwprintw(win->mainWin, DBUFF_STALL_Y_X, " S ");
         wattroff(win->mainWin, A_STANDOUT); 
 	} else {
-		mvwprintw(win->mainWin, 7, 18, "   ");//such magic
+		mvwprintw(win->mainWin, DBUFF_STALL_Y_X, "   ");
 	}
 	
 	if(cpu->stalls[P_EX]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, 11, 18, " S ");//such magic
+        mvwprintw(win->mainWin, EBUFF_STALL_Y_X, " S ");
         wattroff(win->mainWin, A_STANDOUT); 
 	} else {
-		mvwprintw(win->mainWin, 11, 18, "   ");//such magic
+		mvwprintw(win->mainWin, EBUFF_STALL_Y_X, "   ");
 	}
 	
 	if(cpu->stalls[P_MEM]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, 15, 18, " S ");//such magic
+        mvwprintw(win->mainWin, MBUFF_STALL_Y_X, " S ");
         wattroff(win->mainWin, A_STANDOUT);
 	} else {
-		mvwprintw(win->mainWin, 15, 18, "   ");//such magic
+		mvwprintw(win->mainWin, MBUFF_STALL_Y_X, "   ");
 	}
 }
 
-// These numbers are magic
 void updateBufferValues(DEBUG_WIN_p win, CPU_p cpu) {
-    clearBufferBox(win, 1, 22);
+    clearBufferBox(win, FBUFF_CLEAR_START);
 	printBox(win, FBUFF_BOARDER);
 	updateFBuffer(win, cpu);
     
-	clearBufferBox(win, 5, 22);
+	clearBufferBox(win, DBUFF_CLEAR_START);
 	printBox(win, DBUFF_BOARDER);
 	updateDBuffer(win, cpu);
     
-    clearBufferBox(win, 9, 22);
+    clearBufferBox(win, EBUFF_CLEAR_START);
 	printBox(win, EBUFF_BOARDER);
 	updateEBuffer(win, cpu);
     
-    clearBufferBox(win, 13, 22);
+    clearBufferBox(win, MBUFF_CLEAR_START);
 	printBox(win, MBUFF_BOARDER);
 	updateMBuffer(win, cpu);
     
