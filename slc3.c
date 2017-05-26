@@ -383,12 +383,9 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
 }
 
 int checkBEN(CPU_p cpu) {
-    // much magic, such bad, wow!
-    Register nzp;
-    nzp = cpu->dbuff.opn1 << 9;
-    return (cpu->conCodes.n && NBIT(nzp))
-              + (cpu->conCodes.z && ZBIT(nzp))
-              + (cpu->conCodes.p && PBIT(nzp));    
+    return (cpu->conCodes.n && NBIT(cpu->dbuff.dr))
+              + (cpu->conCodes.z && ZBIT(cpu->dbuff.dr))
+              + (cpu->conCodes.p && PBIT(cpu->dbuff.dr));    
 }
 
 void flushPipeline(CPU_p cpu) {
@@ -555,17 +552,16 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			}
 			
 		    if (checkBEN(cpu)) {
-                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1;
-			    cpu->pc = cpu->ebuff.result;
-					
+                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
+				cpu->prefetch.nextPC = cpu->ebuff.result;
 				// flush pipeline and prefetch
 				flushPipeline(cpu);	
             }
 			break;
 		case JSR:
 		case JMP:
-		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn2;
-		    cpu->pc = cpu->ebuff.result;
+		    cpu->ebuff.result = cpu->dbuff.opn1;
+		    cpu->prefetch.nextPC = cpu->ebuff.result;
 			flushPipeline(cpu);
 			break;
 		case ST:
@@ -851,7 +847,7 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
         if (cpu->prefetch.index == MAX_PREFETCH) {
             
             while(cpu->prefetch.index > 0) {
-                cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->pc + (MAX_PREFETCH - cpu->prefetch.index)];              
+                cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->prefetch.nextPC + (MAX_PREFETCH - cpu->prefetch.index)];              
                 cpu->prefetch.index--;               
                 //cpu->stalls[P_IF]+= MAX_PREFETCH * MEMORY_ACCESS_STALL_TIME;
             }         

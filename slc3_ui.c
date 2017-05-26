@@ -20,6 +20,10 @@ void printLabels(DEBUG_WIN_p win) {
         mvwprintw(win->mainWin, REG_MEM_START_Y + i, REG_LABEL_X, REG_OUT_FORMAT, i); 
      }
 
+	 mvwprintw(win->mainWin, FBUFF_LABEL_Y_X, "FBUFF");
+     mvwprintw(win->mainWin, DBUFF_LABEL_Y_X, "DBUFF");
+     mvwprintw(win->mainWin, EBUFF_LABEL_Y_X, "EBUFF");
+     mvwprintw(win->mainWin, MBUFF_LABEL_Y_X, "MBUFF");
      mvwprintw(win->mainWin, STORE_LABEL_Y_X, "STORE:");
        
      mvwprintw(win->mainWin, CC_LABEL_Y_X, "CC:");
@@ -134,8 +138,8 @@ void updateDBuffer(DEBUG_WIN_p win, CPU_p cpu){
 			case BR:
 				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: NZP: OFF: PC:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
-                mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->dbuff.opn1);
-                mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->dbuff.opn2);
+                mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->dbuff.dr);
+                mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->dbuff.opn1);
                 mvwprintw(win->mainWin, DBUFF_OPN2_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->dbuff.pc);
 				break;
 			case LD:

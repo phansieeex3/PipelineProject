@@ -50,9 +50,9 @@ Joshua Meigs
 #define SRCREG(instr)  (instr >> 6 & 0x0007)
 #define SRCREG2(instr)  (instr & 0x0007)
 #define IMMBIT(instr)  ((instr & 0x0020) >> 5) 
-#define NBIT(instr)  ((instr & 0x0800) >> 11) 
-#define ZBIT(instr)  ((instr & 0x0400) >> 10) 
-#define PBIT(instr)  ((instr & 0x0200) >> 9)
+#define NBIT(instr)  (instr & 0x0004) 
+#define ZBIT(instr)  (instr & 0x0002)
+#define PBIT(instr)  (instr & 0x0001)
 #define NZPBITS(instr) ((instr & 0x0E00) >> 9)
  
 // ZEXT trap
