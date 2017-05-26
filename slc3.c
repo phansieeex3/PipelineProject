@@ -68,6 +68,7 @@ char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
         return false;
     }
     cpu->pc = strtol(line, &t, HEX_MODE);
+   
     cpu->prefetch.nextPC = cpu->pc;
     temp = cpu->pc;
     while (!feof(theInFile)) {
@@ -86,7 +87,7 @@ char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
 char loadFile(char * theInFile, CPU_p cpu) {
     FILE * inFile = fopen(theInFile, "r");
 
-    if (!inFile) {
+    if (!inFile) {      
         return false;
     }
 
@@ -165,6 +166,7 @@ char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
     if (programLoaded) {
         win->memAddress = cpu->pc;
         orig = cpu->pc;
+        
         updateScreen(win, cpu, memory, programLoaded);
         printIoLabels(win);
         clearPrompt(win);
@@ -931,7 +933,7 @@ void memoryStep(CPU_p cpu, DEBUG_WIN_p win) {
         if(cpu->stalls[P_MEM] == 1) {
             cpu->mbuff.result = memory[cpu->ebuff.result];
             cpu->stalls[P_MEM]--;
-        } else {
+        } else {           
             cpu->stalls[P_EX] = MEMORY_ACCESS_STALL_TIME;
             cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
         }
@@ -1146,7 +1148,7 @@ void decodeStep(CPU_p cpu) {
 		    dr = cpu->reg_file[dr];
 		case LDR:
 		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-			opn2 = SEXTPCOFFSET9(cpu->fbuff.ir);
+			opn2 = SEXTPCOFFSET6(cpu->fbuff.ir);
 			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case JSR:
@@ -1239,21 +1241,21 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p brea
     short memCycleCounter = 0;
     short breakFlag = false;
     bool storeReached = false;
-    cpu->prefetch.index = MAX_PREFETCH;
-    bool foundNext = false;
     
+    bool foundNext = false;
     do {
         // Pre cycle work
         // Instruction prefetch
         if (cpu->prefetch.index == MAX_PREFETCH && !memoryAccessed) {
-            while(cpu->prefetch.index != 0) {
-                cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->pc + (MAX_PREFETCH - cpu->prefetch.index)];
-                cpu->prefetch.index--;
+            
+            while(cpu->prefetch.index > 0) {
+                cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->pc + (MAX_PREFETCH - cpu->prefetch.index)];              
+                cpu->prefetch.index--;               
                 //Reflect Clock Cycles
-            }
+            }         
           // TODO handle instruction prefetch
         }
-          
+         
           // stall handlers
           
           // check for breakpoint/set breakpoint flag
@@ -1262,14 +1264,9 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p brea
         if (!cpu->stalls[P_STORE]) {         
             storeStep(cpu, win);
             if(cpu->pc == cpu->mbuff.pc) {
-                foundNext = true;
-                
+                foundNext = true;  
+                cpu->pc++;   //If Store is done, increment the arrow pc by one              
             }
-            /*
-               if(cpu->mbuff.pc == initPC && mode == STEP_MODE) {
-                   break;
-               }
-            */
             // TODO add switch statement to handle each instruction
             // separate method?
         } else {
@@ -1323,8 +1320,7 @@ int controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p brea
             cpu->stalls[P_IF]--;
         }
 
-    } while (memoryAccessed || (mode == STEP_MODE && !foundNext)); // (mode == RUN_MODE && !breakFlag) || || (mode == MICRO_STEP_MODE && (cpu->mbuff.pc == cpu->pc))
-    cpu->pc++;
+    } while (memoryAccessed || (mode != MICRO_STEP_MODE)); // (mode == RUN_MODE && !breakFlag) || || (mode == MICRO_STEP_MODE && (cpu->mbuff.pc == cpu->pc))
 }
 
 int monitor(CPU_p cpu, DEBUG_WIN_p win) {
@@ -1359,7 +1355,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
                 save(cpu, win);
                 break;
             case STEP:
-                controller_pipelined(cpu, win, STEP_MODE, breakpoints);
+                controller_pipelined(cpu, win, MICRO_STEP_MODE, breakpoints);
                 updateScreen(win, cpu, memory, programLoaded);
                 break;
             case RUN:
