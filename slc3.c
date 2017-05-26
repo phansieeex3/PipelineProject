@@ -775,6 +775,7 @@ void decodeHandler(CPU_p cpu) {
 			cpu->stalls[P_ID] = cpu->stalls[P_EX];
 		} else {
 			decodeStep(cpu);
+<<<<<<< HEAD
 		}
     } else {
 		// Update stall and do nothing if next is stalled
@@ -789,6 +790,22 @@ void decodeHandler(CPU_p cpu) {
 		    cpu->dbuff.opn2 = NOP;
 		    cpu->dbuff.pc = NOP;
 		}
+=======
+		}
+    } else {
+		// Update stall and do nothing if next is stalled
+        if (cpu->stalls[P_EX]) {
+		    if (cpu->stalls[P_ID] < cpu->stalls[P_EX]) { 
+				cpu->stalls[P_ID] = cpu->stalls[P_EX];
+			}
+	    } else { // Push NOP forward otherwise
+		    cpu->dbuff.op = NOP;
+		    cpu->dbuff.dr = NOP;
+		    cpu->dbuff.opn1 = NOP;
+		    cpu->dbuff.opn2 = NOP;
+		    cpu->dbuff.pc = NOP;
+		}
+>>>>>>> 7a72ef11b5abc4f825699d123513bfde42078ddc
     }
 }
 
