@@ -586,7 +586,7 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			break;
 		case LDR:
 		case STR:
-		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2 + 1;
+		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
 			break;
 		case TRAP:
 		    if (cpu->mbuff.pc && cpu->mbuff.op) {
