@@ -523,7 +523,7 @@ void memoryStep(CPU_p cpu, bool finish) {
 }
 
 // Execute + Eval Address
-bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
+int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 	cpu->ebuff.op = cpu->dbuff.op;
 	cpu->ebuff.dr = cpu->dbuff.dr;
 	cpu->ebuff.pc = cpu->dbuff.pc;
@@ -559,25 +559,25 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
                 cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
 				cpu->prefetch.nextPC = cpu->ebuff.result;
 				// flush pipeline and prefetch
-				flushPipeline(cpu);	
+				flushPipeline(cpu);
+                return FLUSH_PIPELINE;				
             }
 			break;
 		case JSR:
             if (cpu->dbuff.dr) { //jsr
                 cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
-				cpu->prefetch.nextPC = cpu->ebuff.result;//pc = pc+1 + pcoffset11
-				flushPipeline(cpu);	
+				cpu->prefetch.nextPC = cpu->ebuff.result;//pc = pc+1 + pcoffset11	
             } else { //jsrr
 			    cpu->ebuff.result = cpu->dbuff.opn1;
-                cpu->prefetch.nextPC = cpu->ebuff.result; //pc = baseR
-				flushPipeline(cpu);	
+                cpu->prefetch.nextPC = cpu->ebuff.result; //pc = baseR	
             }
-            break;
+			flushPipeline(cpu);
+            return FLUSH_PIPELINE;
 		case JMP:
 		    cpu->ebuff.result = cpu->dbuff.opn1;
 		    cpu->prefetch.nextPC = cpu->ebuff.result;
 			flushPipeline(cpu);
-			break;
+			return FLUSH_PIPELINE;
 		case ST:
 		case LD:
 		case STI:
@@ -599,7 +599,7 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			} else {
 				cpu->ebuff.result = cpu->dbuff.opn1;
 				if(trap(cpu, win, cpu->dbuff.opn1)) {
-					return true;
+					return HALT_PROGRAM;
 				}
 			}
 			break;
@@ -609,7 +609,7 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		    break;
 	}
 	
-	return false;
+	return 0;
 }
 
 short checkRawHazards(CPU_p cpu, Register src) {
@@ -751,8 +751,8 @@ void memHandler(CPU_p cpu) {
     }
 }
 
-bool executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
-    bool haltProgram = false;
+int executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
+    int exResultSignal = 0;
 	
 	// If stalled, decrement counter
 	if (cpu->stalls[P_EX]) cpu->stalls[P_EX]--;
@@ -761,7 +761,7 @@ bool executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
 		if (cpu->stalls[P_MEM]) {
 			cpu->stalls[P_EX] = cpu->stalls[P_MEM];
 		} else {
-            haltProgram = executeStep(cpu, win);
+            exResultSignal = executeStep(cpu, win);
 		}
     } else {
 		// Update stall and do nothing if next is stalled
@@ -777,7 +777,7 @@ bool executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
 		}
     }
 		
-	return haltProgram;
+	return exResultSignal;
 }
 
 void decodeHandler(CPU_p cpu) {
@@ -847,7 +847,7 @@ Register getNextInstrToFinish(CPU_p cpu) {
 bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
     bool breakFlag = false;
     bool foundNext = false;
-	
+	int exControlSignal = 0;
     do {         
         // Store/Write Back
 		storeStep(cpu);
@@ -861,7 +861,13 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
         memHandler(cpu);
 		
 		// Exit if Execute Step processes a HALT Trap
-		if(executeHandler(cpu, win)) return false;
+		exControlSignal = executeHandler(cpu, win);
+		
+		if (exControlSignal == HALT_PROGRAM) {
+			return false;
+		} else if (exControlSignal == FLUSH_PIPELINE){
+			continue;
+		}
 
         decodeHandler(cpu);
         

@@ -81,6 +81,8 @@ Joshua Meigs
 #define MAXBREAK 4
 #define NULL_BREAKPOINT 99999
 #define BREAKPOINT_NOT_FOUND -1
+#define FLUSH_PIPELINE 1
+#define HALT_PROGRAM 2
 
 // Menu Options
 #define LOAD '1'
