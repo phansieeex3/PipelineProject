@@ -100,9 +100,9 @@ Joshua Meigs
 #define BUFF_LBL_END_Y 14
 
 #define FBUFF_BOARDER 1,22,3,15
-#define DBUFF_BOARDER 5,22,3,31 // <-
-#define EBUFF_BOARDER 9,22,3,23
-#define MBUFF_BOARDER 13,22,3,23
+#define DBUFF_BOARDER 5,22,3,25 // <-
+#define EBUFF_BOARDER 9,22,3,20
+#define MBUFF_BOARDER 13,22,3,20
 
 #define FBUFF_PC_VAL_Y_X     3,24
 #define FBUFF_IR_VAL_Y_X     3,30
@@ -133,11 +133,6 @@ Joshua Meigs
 #define HALF(x) ((x)/2)
 #define MOD16(x) ((x)%16)
 
-
-
-
-
-
 typedef struct {
     WINDOW *mainWin;
     WINDOW *ioWin;
@@ -148,8 +143,6 @@ typedef struct {
 } DEBUG_WIN_s;
 
 typedef DEBUG_WIN_s* DEBUG_WIN_p;
-
-
 
 // Print Main Window Labels
 void printLabels(DEBUG_WIN_p);
@@ -198,7 +191,3 @@ void clearIOWin(DEBUG_WIN_p);
 
 // Prints a square boarder with upper left corner being at y, x with height and width
 void printBox(DEBUG_WIN_p, int, int, int, int);
-
-
-
-

@@ -537,6 +537,7 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			break;
 		case NOT:
 		    cpu->alu_r = ~cpu->alu_a;
+			cpu->ebuff.result = cpu->alu_r; 
 			break;
 		case BR:
 
@@ -559,7 +560,7 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
             }
 			break;
 		case JSR:
-            if(opn1)
+            break;
 		case JMP:
 		    cpu->ebuff.result = cpu->dbuff.opn1;
 		    cpu->prefetch.nextPC = cpu->ebuff.result;
@@ -669,16 +670,13 @@ void decodeStep(CPU_p cpu) {
 			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case JSR:
-            if(NBIT(cpu->fbuff.ir)) { //jsr
+            if(IMMBIT(cpu->fbuff.ir)) { //jsr
                 opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
                 opn2 = NOP;
-            }
-            else { //jsrr
+            } else { //jsrr
                 opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
-                opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
-
+                opn2 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
             }
-		    
 			break;
 		case JMP:
 		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
@@ -775,7 +773,6 @@ void decodeHandler(CPU_p cpu) {
 			cpu->stalls[P_ID] = cpu->stalls[P_EX];
 		} else {
 			decodeStep(cpu);
-<<<<<<< HEAD
 		}
     } else {
 		// Update stall and do nothing if next is stalled
@@ -790,22 +787,6 @@ void decodeHandler(CPU_p cpu) {
 		    cpu->dbuff.opn2 = NOP;
 		    cpu->dbuff.pc = NOP;
 		}
-=======
-		}
-    } else {
-		// Update stall and do nothing if next is stalled
-        if (cpu->stalls[P_EX]) {
-		    if (cpu->stalls[P_ID] < cpu->stalls[P_EX]) { 
-				cpu->stalls[P_ID] = cpu->stalls[P_EX];
-			}
-	    } else { // Push NOP forward otherwise
-		    cpu->dbuff.op = NOP;
-		    cpu->dbuff.dr = NOP;
-		    cpu->dbuff.opn1 = NOP;
-		    cpu->dbuff.opn2 = NOP;
-		    cpu->dbuff.pc = NOP;
-		}
->>>>>>> 7a72ef11b5abc4f825699d123513bfde42078ddc
     }
 }
 
@@ -925,7 +906,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 						programLoaded = controller_pipelined(cpu, win, STEP_MODE, breakpoints);
 						cpu->pc = getNextInstrToFinish(cpu);
 					} else {
-						displayBoldMessage(win, "No program loaded! Press any key to continue.");
+						displayBoldMessage(win, "No program loaded! Press any key...");
 					}
 					break;
 				case RUN:
@@ -933,7 +914,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 						programLoaded = controller_pipelined(cpu, win, RUN_MODE, breakpoints);
 						cpu->pc = getNextInstrToFinish(cpu);
 					} else {
-						displayBoldMessage(win, "No program loaded! Press any key to continue.");
+						displayBoldMessage(win, "No program loaded! Press any key...");
 					}
 					break;
 				case DISPLAY_MEM:
@@ -947,11 +928,11 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 						breakPoint(cpu, win, breakpoints, programLoaded);
 					}
 					else {
-						displayBoldMessage(win, "No program loaded! Press any key to continue.");
+						displayBoldMessage(win, "No program loaded! Press any key...");
 					}
 					break;
 				case EXIT:
-					displayBoldMessage(win, "Exit Selected! Press any key to continue.");
+					displayBoldMessage(win, "Exit Selected! Press any key...");
 					return 0;
 				default: 
 					displayBoldMessage(win, "Invalid Menu Option");

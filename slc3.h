@@ -42,8 +42,6 @@ Joshua Meigs
 #define LDI 10
 #define STI 11
 
-
-
 // Macros to get IR bit fields
 #define OPCODE(instr)  (instr >> 12 & 0x000F)
 #define DSTREG(instr)  (instr >> 9 & 0x0007)
@@ -109,7 +107,6 @@ Joshua Meigs
 #define MAX_PREFETCH 8
 
 #define NOP 0x0000
-
 
 typedef unsigned short Register;
 
