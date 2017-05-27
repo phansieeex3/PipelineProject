@@ -688,6 +688,7 @@ void decodeStep(CPU_p cpu) {
                 dr = JSRBIT11(cpu->fbuff.ir);
 				opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
                 opn2 = NOP;
+				cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
             }
 			break;
 		case JMP:

@@ -48,7 +48,7 @@ Joshua Meigs
 #define SRCREG(instr)  (instr >> 6 & 0x0007)
 #define SRCREG2(instr)  (instr & 0x0007)
 #define IMMBIT(instr)  ((instr & 0x0020) >> 5)
-#define JSRBIT11(instr) (instr & 0x0800)
+#define JSRBIT11(instr) ((instr & 0x0800) >> 11)
 #define NBIT(instr)  (instr & 0x0004) 
 #define ZBIT(instr)  (instr & 0x0002)
 #define PBIT(instr)  (instr & 0x0001)
