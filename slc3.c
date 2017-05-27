@@ -667,6 +667,8 @@ void decodeStep(CPU_p cpu) {
 		case ST:
 		case STI:
 		    dr = cpu->reg_file[dr];
+			opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
+			opn2 = NOP;
 		case LD:
 		case LDI:
 		case LEA:
