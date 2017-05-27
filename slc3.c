@@ -428,6 +428,8 @@ void storeStep(CPU_p cpu) {
             cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
             updateConCodes(cpu, cpu->mbuff.result);
             break;
+		case JSR:
+			cpu->reg_file[RETURN_REG] = cpu->mbuff.pc + 1;
         case RSV:
             if (!cpu->mbuff.imb) {
                 cpu->reg_file[SP_REG]--;
@@ -540,7 +542,6 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			cpu->ebuff.result = cpu->alu_r; 
 			break;
 		case BR:
-
 			// Stall until next OP doesnt write to reg
 			// Ignore this step for a NOP BR (Branch on nothing)
 			if (cpu->mbuff.pc && cpu->ebuff.pc) {
@@ -560,12 +561,14 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
             }
 			break;
 		case JSR:
-            if (IMMBIT(cpu->ebuff.ir)) { //jsr
-                cpu->ebuff.pc = cpu->ebuff.pc + opn1; //pc = pc + pcoffset11
-
-            }
-            else { //jsrr
-                cpu->ebuff.pc = opn2; //pc = baseR
+            if (cpu->dbuff.dr) { //jsr
+                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
+				cpu->prefetch.nextPC = cpu->ebuff.result;//pc = pc+1 + pcoffset11
+				flushPipeline(cpu);	
+            } else { //jsrr
+			    cpu->ebuff.result = cpu->dbuff.opn1;
+                cpu->prefetch.nextPC = cpu->ebuff.result; //pc = baseR
+				flushPipeline(cpu);	
             }
             break;
 		case JMP:
@@ -603,7 +606,6 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			cpu->ebuff.imb = cpu->dbuff.imb;
 		    break;
 	}
-	
 	
 	return false;
 }
@@ -677,12 +679,14 @@ void decodeStep(CPU_p cpu) {
 			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case JSR:
-            if(IMMBIT(cpu->fbuff.ir)) { //jsr
-                opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
+            if(JSRBIT11(cpu->fbuff.ir)) { //jsr
+                dr =  JSRBIT11(cpu->fbuff.ir);
+				opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
                 opn2 = NOP;
             } else { //jsrr
-                opn1 = SEXTPCOFFSET11(cpu->fbuff.ir);
-                opn2 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+                dr = JSRBIT11(cpu->fbuff.ir);
+				opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+                opn2 = NOP;
             }
 			break;
 		case JMP:
