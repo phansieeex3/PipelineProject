@@ -9,6 +9,7 @@
 
 #include "slc3_ui.c"
 
+// TODO: FIX MAXMEM
 // you can define a simple memory module here for this program
 unsigned short memory[MAXMEM];
 
@@ -134,7 +135,7 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
                 saveToFile(input, start, end);
                 break;
             } else {
-                displayBoldMessage(win, "Cancelling! Press any key.");
+                displayBoldMessage(win, "Cancelling! Press any key...");
                 return;
             }
         }
@@ -168,7 +169,7 @@ char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
     } else {
         clearPrompt(win);
         displayBoldMessage(win,
-                "Error: Invalid File. Press any key to continue.");
+                "Error: Invalid File. Press any key...");
     }
 
     return programLoaded;
@@ -918,6 +919,10 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 					if (programLoaded) {
 						programLoaded = controller_pipelined(cpu, win, STEP_MODE, breakpoints);
 						cpu->pc = getNextInstrToFinish(cpu);
+						if (displayMemAddress+15 < cpu->pc || cpu->pc < displayMemAddress) { 
+							displayMemAddress = cpu->pc;
+						    win->memAddress = displayMemAddress;
+						}
 					} else {
 						displayBoldMessage(win, "No program loaded! Press any key...");
 					}
@@ -926,6 +931,10 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 					if (programLoaded) {
 						programLoaded = controller_pipelined(cpu, win, RUN_MODE, breakpoints);
 						cpu->pc = getNextInstrToFinish(cpu);
+						if (displayMemAddress+15 < cpu->pc || cpu->pc < displayMemAddress) {
+							displayMemAddress = cpu->pc;
+						    win->memAddress = displayMemAddress;
+						}
 					} else {
 						displayBoldMessage(win, "No program loaded! Press any key...");
 					}
