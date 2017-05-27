@@ -560,6 +560,13 @@ bool executeStep(CPU_p cpu, DEBUG_WIN_p win) {
             }
 			break;
 		case JSR:
+            if (IMMBIT(cpu->ebuff.ir)) { //jsr
+                cpu->ebuff.pc = cpu->ebuff.pc + opn1; //pc = pc + pcoffset11
+
+            }
+            else { //jsrr
+                cpu->ebuff.pc = opn2; //pc = baseR
+            }
             break;
 		case JMP:
 		    cpu->ebuff.result = cpu->dbuff.opn1;
