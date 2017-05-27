@@ -425,6 +425,7 @@ void storeStep(CPU_p cpu) {
         case LD:
         case LDR:
         case LDI:
+		case LEA:
             cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
             updateConCodes(cpu, cpu->mbuff.result);
             break;
