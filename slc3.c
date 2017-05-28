@@ -430,10 +430,11 @@ bool storeStep(CPU_p cpu) {
         case LDI:
 		case LEA:
             cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
-            updateConCodes(cpu, cpu->mbuff.result);
+            updateConCodes(cpu, cpu->reg_file[cpu->mbuff.dr]);
             break;
 		case JSR:
 			cpu->reg_file[RETURN_REG] = cpu->mbuff.pc + 1;
+			updateConCodes(cpu, cpu->reg_file[RETURN_REG]);
         case RSV:
             if (!cpu->mbuff.imb) {
                 cpu->reg_file[SP_REG]--;
@@ -442,6 +443,7 @@ bool storeStep(CPU_p cpu) {
                 cpu->reg_file[SP_REG]++;
             }
             break;
+			updateConCodes(cpu, cpu->reg_file[cpu->reg_file[SP_REG]]);
     }
 	
 	// return signal if store is processing an op or not
