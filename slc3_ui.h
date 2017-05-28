@@ -91,18 +91,28 @@ Joshua Meigs
 
 #define FBUFF_PC_LBL_Y_X 2,26
 #define FBUFF_IR_LBL_Y_X 2,32
+#define FBUFF_NOP_LBL_Y_X 2,24
 #define DBUFF_LBL_START_Y 6
+
 #define EBUFF_LBL_START_Y 10
+
 #define MBUFF_LBL_START_Y 14
+
 #define OP_LBL_X 24
 #define DR_LBL_X 28
 #define OPN1_LBL_X 32
 #define OPN2_LBL_X 38
 
-#define FBUFF_BOARDER 1,22,3,15
-#define DBUFF_BOARDER 5,22,3,25 // <-
-#define EBUFF_BOARDER 9,22,3,20
-#define MBUFF_BOARDER 13,22,3,20
+#define FBUFF_BOARDER 1,22,3
+#define DBUFF_BOARDER 5,22,3
+#define EBUFF_BOARDER 9,22,3
+#define MBUFF_BOARDER 13,22,3
+
+#define NOP_WIDTH 6
+#define FBUFF_WIDTH 15
+#define TRAP_LABEL_WIDTH 13
+#define THREE_LABEL_WIDTH 18
+#define FOUR_LABEL_WIDTH 22
 
 #define FBUFF_PC_VAL_Y_X     3,24
 #define FBUFF_IR_VAL_Y_X     3,30
