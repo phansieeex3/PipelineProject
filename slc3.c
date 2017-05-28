@@ -414,7 +414,8 @@ bool containsRegisterUpdate(EMBUFF_s buffer) {
 
 bool forwardCCValue(CPU_p cpu) {
 	int result = 0;
-	int value;
+	short value;
+	
 	switch (cpu->mbuff.op) {
 		case ADD:
 		case AND:
@@ -436,6 +437,9 @@ bool forwardCCValue(CPU_p cpu) {
 			}
 			break;
 	}
+	
+	
+	
     return (value < 0 && NBIT(cpu->dbuff.dr))
 		   + (value == 0 && ZBIT(cpu->dbuff.dr))
            + (value > 0 && PBIT(cpu->dbuff.dr));
@@ -694,6 +698,7 @@ bool containsHazard(EMBUFF_s buffer, Register reg) {
 		case LD:
 		case LDI:
 		case LDR:
+		case LEA:
 		    if (reg == buffer.dr) {
 				return true;
 			}
@@ -715,6 +720,7 @@ Register fowardExecuteData(CPU_p cpu) {
 		case LD:
 		case LDI:
 		case LDR:
+		case LEA:
 		    cpu->stalls[P_ID]++;
 			break;
 	}

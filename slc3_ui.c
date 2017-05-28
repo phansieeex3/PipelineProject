@@ -528,7 +528,9 @@ void writeCharToIOWin(DEBUG_WIN_p win, unsigned short c) {
     if (c == NEWLINE) {
         win->ioY++;
         win->ioX = IO_START_X;
-        
+        if (win->ioY == IO_WIN_HEIGHT-1) {
+			clearIOWin(win);
+		}
     } else {
     
         mvwaddch(win->ioWin, win->ioY, win->ioX, c);
