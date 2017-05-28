@@ -103,7 +103,7 @@ void updateRegisterValues(DEBUG_WIN_p win, CPU_p cpu) {
 
 void updateFBuffer(DEBUG_WIN_p win, CPU_p cpu){
 	if (!cpu->fbuff.ir) {
-        mvwprintw(win->mainWin, FBUFF_NOP_LBL_Y_X, "IR:");
+        mvwprintw(win->mainWin, FBUFF_NOP_LBL_Y_X,"IR:");
 		mvwprintw(win->mainWin, FBUFF_PC_VAL_Y_X, "NOP");
 		printBox(win, FBUFF_BOARDER, NOP_WIDTH);
 	} else {
@@ -364,34 +364,34 @@ void updateStore(DEBUG_WIN_p win, CPU_p cpu) {
 void printStallSymbols(DEBUG_WIN_p win, CPU_p cpu) {
 	if(cpu->stalls[P_IF]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, FBUFF_STALL_Y_X, " S ");
+        mvwprintw(win->mainWin, FBUFF_STALL_Y_X, STALL_STR);
         wattroff(win->mainWin, A_STANDOUT);   
 	} else {
-        mvwprintw(win->mainWin, FBUFF_STALL_Y_X, "   ");
+        mvwprintw(win->mainWin, FBUFF_STALL_Y_X, STALL_ERS_STR);
 	}
 	
 	if(cpu->stalls[P_ID]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, DBUFF_STALL_Y_X, " S ");
+        mvwprintw(win->mainWin, DBUFF_STALL_Y_X, STALL_STR);
         wattroff(win->mainWin, A_STANDOUT); 
 	} else {
-		mvwprintw(win->mainWin, DBUFF_STALL_Y_X, "   ");
+		mvwprintw(win->mainWin, DBUFF_STALL_Y_X, STALL_ERS_STR);
 	}
 	
 	if(cpu->stalls[P_EX]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, EBUFF_STALL_Y_X, " S ");
+        mvwprintw(win->mainWin, EBUFF_STALL_Y_X, STALL_STR);
         wattroff(win->mainWin, A_STANDOUT); 
 	} else {
-		mvwprintw(win->mainWin, EBUFF_STALL_Y_X, "   ");
+		mvwprintw(win->mainWin, EBUFF_STALL_Y_X, STALL_ERS_STR);
 	}
 	
 	if(cpu->stalls[P_MEM]) {
 		wattron(win->mainWin, A_STANDOUT); 
-        mvwprintw(win->mainWin, MBUFF_STALL_Y_X, " S ");
+        mvwprintw(win->mainWin, MBUFF_STALL_Y_X, STALL_STR);
         wattroff(win->mainWin, A_STANDOUT);
 	} else {
-		mvwprintw(win->mainWin, MBUFF_STALL_Y_X, "   ");
+		mvwprintw(win->mainWin, MBUFF_STALL_Y_X, STALL_ERS_STR);
 	}
 }
 

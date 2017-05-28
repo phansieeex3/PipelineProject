@@ -30,26 +30,6 @@ Joshua Meigs
 #define REG_MEM_START_Y 2
 #define MEM_VAL_X 63
 
-// Will not be needed
-#define PC_LABEL_Y_X 13,13
-#define PC_VAL_Y_X 13,17
-
-#define IR_LABEL_Y_X 13,26
-#define IR_VAL_Y_X 13,30
-
-#define A_LABEL_Y_X 14,13
-#define A_VAL_Y_X 14,17
-
-#define B_LABEL_Y_X 14,26
-#define B_VAL_Y_X 14,30
-
-#define MAR_LABEL_Y_X 15,12
-#define MAR_VAL_Y_X 15,17
-
-#define MDR_LABEL_Y_X 15,24
-#define MDR_VAL_Y_X 15,30
-/////////////////
-
 #define CC_LABEL_Y_X 18,24
 
 #define N_LABEL_Y_X 18,28
@@ -81,6 +61,8 @@ Joshua Meigs
 #define HEX_OUT_SINGLE "x%.01X"
 #define REG_OUT_FORMAT "R%d:"
 
+#define STALL_STR " S "
+#define STALL_ERS_STR "   "
 
 /******** New Constants for Pipeline display ***********/
 #define FBUFF_LABEL_Y_X 2,16

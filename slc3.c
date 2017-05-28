@@ -467,6 +467,7 @@ void initPipeline(CPU_p cpu) {
     cpu->ebuff.result = NOP;
     cpu->ebuff.op = NOP;
 	cpu->opInStore = NOP_IN_STORE;
+	cpu->indirectFlag = false;
 	flushPipeline(cpu);
     initStall(cpu);
 }
@@ -525,11 +526,11 @@ void memoryStep(CPU_p cpu, bool finish) {
 			break;      
         case LDI:
 			if(finish) {
-				if(cpu->indirectFlag == true) {
+				if(cpu->indirectFlag) {
 					cpu->mbuff.result = memory[cpu->ebuff.result];
 					cpu->indirectFlag = false;
 				} else {
-					cpu->ebuff.result = memory[cpu->ebuff.result];// stall for 20 cycles
+					cpu->ebuff.result = memory[cpu->ebuff.result];
 					cpu->indirectFlag = true;
 					cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 				}
@@ -547,26 +548,19 @@ void memoryStep(CPU_p cpu, bool finish) {
 			break;
         case STI:
 			if(finish) {
-				if(cpu->indirectFlag == true) {
+				if(cpu->indirectFlag) {
 					cpu->mbuff.result = memory[cpu->ebuff.result];
+					memory[cpu->ebuff.result] = cpu->ebuff.dr;
 					cpu->indirectFlag = false;
 				} else {
-					memory[cpu->ebuff.result] = cpu->ebuff.dr;// stall for 20 cycles
+			        cpu->ebuff.result = memory[cpu->ebuff.result];
 					cpu->indirectFlag = true;
 					cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 				}
 			} else {
-				memory[cpu->ebuff.result] = cpu->ebuff.dr;
 				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 			} 
 			
-			if(cpu->indirectFlag == true) {
-				memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
-				cpu->indirectFlag = false;
-			}
-			memory[cpu->ebuff.result] = cpu->ebuff.dr; // stall for 20 cycles
-			cpu->indirectFlag = true;
-			cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 			break;
         case RSV:
             if (!cpu->ebuff.imb) {
@@ -787,7 +781,7 @@ void decodeStep(CPU_p cpu) {
 			break;
 		case ST:
 		case STI:
-		    dr = cpu->reg_file[dr];
+		    dr = getRegisterValue(cpu, dr);
 			opn1 = SEXTPCOFFSET9(cpu->fbuff.ir);
 			opn2 = NOP;
 		case LD:
