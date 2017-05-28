@@ -506,6 +506,7 @@ void storeStep(CPU_p cpu) {
 			cpu->reg_file[RETURN_REG] = cpu->mbuff.pc + 1;
 			cpu->valueInStore = cpu->reg_file[RETURN_REG];
 			updateConCodes(cpu, cpu->reg_file[RETURN_REG]);
+			break;
         case RSV:
             if (!cpu->mbuff.imb) {
                 cpu->reg_file[SP_REG]--;
@@ -513,10 +514,10 @@ void storeStep(CPU_p cpu) {
                 cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
                 cpu->reg_file[SP_REG]++;
             }
-            break;
 			cpu->dr_store = SP_REG;
 			cpu->valueInStore = cpu->reg_file[SP_REG];
 			updateConCodes(cpu, cpu->reg_file[cpu->reg_file[SP_REG]]);
+			break;
     }
 	
 	// set opInStore if store is processing an op or not
