@@ -91,13 +91,13 @@ Joshua Meigs
 
 #define FBUFF_PC_LBL_Y_X 2,26
 #define FBUFF_IR_LBL_Y_X 2,32
-#define BUFF_LBL_START_Y 6
+#define DBUFF_LBL_START_Y 6
+#define EBUFF_LBL_START_Y 10
+#define MBUFF_LBL_START_Y 14
 #define OP_LBL_X 24
 #define DR_LBL_X 28
 #define OPN1_LBL_X 32
 #define OPN2_LBL_X 38
-#define RESULT_LBL_X 32
-#define BUFF_LBL_END_Y 14
 
 #define FBUFF_BOARDER 1,22,3,15
 #define DBUFF_BOARDER 5,22,3,25 // <-
@@ -106,19 +106,33 @@ Joshua Meigs
 
 #define FBUFF_PC_VAL_Y_X     3,24
 #define FBUFF_IR_VAL_Y_X     3,30
+
 #define DBUFF_OP_VAL_Y_X     7,24
 #define DBUFF_DR_VAL_Y_X     7,28
 #define DBUFF_OPN1_VAL_Y_X   7,31
 #define DBUFF_OPN2_VAL_Y_X   7,37
 #define DBUFF_PC_VAL_Y_X     7,43
+#define DBUFF_N_VAL_Y_X      7,28
+#define DBUFF_Z_VAL_Y_X      7,29
+#define DBUFF_P_VAL_Y_X      7,30
+
 #define EBUFF_OP_VAL_Y_X     11,24
 #define EBUFF_DR_VAL_Y_X     11,28
 #define EBUFF_RESULT_VAL_Y_X 11,32
 #define EBUFF_PC_VAL_Y_X     11,39
+#define EBUFF_N_VAL_Y_X      11,28
+#define EBUFF_Z_VAL_Y_X      11,29
+#define EBUFF_P_VAL_Y_X      11,30
+
 #define MBUFF_OP_VAL_Y_X     15,24
 #define MBUFF_DR_VAL_Y_X     15,28
 #define MBUFF_RESULT_VAL_Y_X 15,32
 #define MBUFF_PC_VAL_Y_X     15,39
+#define MBUFF_N_VAL_Y_X      15,28
+#define MBUFF_Z_VAL_Y_X      15,29
+#define MBUFF_P_VAL_Y_X      15,30
+
+#define STORE_VAL_Y_X        17,30 
 
 #define FBUFF_STALL_Y_X 3,18
 #define DBUFF_STALL_Y_X 7,18
@@ -130,8 +144,16 @@ Joshua Meigs
 #define EBUFF_CLEAR_START 9,21
 #define MBUFF_CLEAR_START 13,21
 
+#define BOX_CLEAR_WIDTH 33
+#define BOX_CLEAR_HEIGHT 4
+
 #define HALF(x) ((x)/2)
 #define MOD16(x) ((x)%16)
+#define MOD10(x) ((x)%10)
+
+#define DISPLAY_N(x) ((x&4)>>2)
+#define DISPLAY_Z(x) ((x&2)>>1)
+#define DISPLAY_P(x) (x&1)
 
 typedef struct {
     WINDOW *mainWin;

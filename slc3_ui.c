@@ -52,8 +52,8 @@ void updateMemory(DEBUG_WIN_p win, unsigned short* memory, unsigned short mem_in
 }
 
 void clearBufferBox(DEBUG_WIN_p win, int startY, int startX) {
-	for (int i = startY; i < startY+4; i++) {
-		for (int j = startX; j < startX+33; j++) {
+	for (int i = startY; i < startY+BOX_CLEAR_HEIGHT; i++) {
+		for (int j = startX; j < startX+BOX_CLEAR_WIDTH; j++) {
 			mvwaddch(win->mainWin, i, j, ' ');
 		}
 	}
@@ -115,66 +115,68 @@ void updateFBuffer(DEBUG_WIN_p win, CPU_p cpu){
 
 void updateDBuffer(DEBUG_WIN_p win, CPU_p cpu){
 	if (!cpu->dbuff.pc && !cpu->dbuff.op) {
-		mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP:");
+		mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP:");
 		mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, "NOP");
 	} else {
 		switch (cpu->dbuff.op) {
 			case AND:
 			case ADD:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OPN1: OPN2:");
+				mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OPN1: OPN2:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.dr));
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn1);
                 mvwprintw(win->mainWin, DBUFF_OPN2_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn2);
 				break;
 			case NOT:
-			    mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OPN1:");
+			    mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OPN1:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.dr));
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn1);
 				break;
 			case BR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: NZP: OFF:");
+				mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: NZP: OFF:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
-                mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->dbuff.dr);
+                mvwprintw(win->mainWin, DBUFF_N_VAL_Y_X, "%d", DISPLAY_N(cpu->dbuff.dr));
+				mvwprintw(win->mainWin, DBUFF_Z_VAL_Y_X, "%d", DISPLAY_Z(cpu->dbuff.dr));
+				mvwprintw(win->mainWin, DBUFF_P_VAL_Y_X, "%d", DISPLAY_P(cpu->dbuff.dr));
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->dbuff.opn1);
 				break;
 			case LD:
 			case LEA:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OFF:");
+				mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OFF:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.dr));
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn1);
 				break;
 			case ST:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: OFF:");
+				mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: OFF:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->dbuff.dr);
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X+2, HEX_OUT_FORMAT, cpu->dbuff.opn1);
 				break;
 			case STR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: RVAL: OFF:");
+				mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: RVAL: OFF:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->dbuff.dr);
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X+2, HEX_OUT_FORMAT, cpu->dbuff.opn1);
 				mvwprintw(win->mainWin, DBUFF_OPN2_VAL_Y_X+2, HEX_OUT_FORMAT, cpu->dbuff.opn2);;
 				break;
 			case LDR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: DR: RVAL: OFF:");
+				mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: RVAL: OFF:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_FORMAT, MOD16(cpu->dbuff.dr));
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn1);
 				mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn2);
 				break;
 			case TRAP:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: TRAP:");
+				mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: TRAP:");
 				mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
                 mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn1);
 				break;
 			default:
-			    mvwprintw(win->mainWin, BUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OPN1: OPN2:");
-			    mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, cpu->dbuff.op%16);
-                mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->dbuff.dr%16);
+			    mvwprintw(win->mainWin, DBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: OPN1: OPN2:");
+			    mvwprintw(win->mainWin, DBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.op));
+                mvwprintw(win->mainWin, DBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->dbuff.dr));
                 mvwprintw(win->mainWin, DBUFF_OPN1_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn1);
                 mvwprintw(win->mainWin, DBUFF_OPN2_VAL_Y_X, HEX_OUT_FORMAT, cpu->dbuff.opn2);
 			    break;
@@ -184,56 +186,58 @@ void updateDBuffer(DEBUG_WIN_p win, CPU_p cpu){
 
 void updateEBuffer(DEBUG_WIN_p win, CPU_p cpu){
 	if (!cpu->ebuff.pc && !cpu->ebuff.op) {
-		mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP:");
+		mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP:");
 		mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, "NOP");
 	} else {
 		switch (cpu->ebuff.op) {
 			case AND:
 			case ADD:
 			case NOT:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: DR: RESULT:");
+				mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: RESULT:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
                 mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.dr));
                 mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.result);
 				break;
 			case BR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: NZP: PC+OFS:");
+				mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: NZP: PC+OFS:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
-                mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->ebuff.dr);
+                mvwprintw(win->mainWin, EBUFF_N_VAL_Y_X, "%d", DISPLAY_N(cpu->ebuff.dr));
+				mvwprintw(win->mainWin, EBUFF_Z_VAL_Y_X, "%d", DISPLAY_Z(cpu->ebuff.dr));
+				mvwprintw(win->mainWin, EBUFF_P_VAL_Y_X, "%d", DISPLAY_P(cpu->ebuff.dr));
                 mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.result);
 				break;
 			case LD:
 			case LEA:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: DR: PC+OFS:");
+				mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: PC+OFS:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
                 mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.dr));
                 mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.result);
 				break;
 			case ST:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: SRV: PC+OFS:");
+				mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: PC+OFS:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
                 mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->ebuff.dr);
                 mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->ebuff.result);
 				break;
 			case STR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: SRV: RG+OFS:");
+				mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: RG+OFS:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
                 mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->ebuff.dr);
                 mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->ebuff.result);
 				break;
 			case LDR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: DR: RG+OFS:");
+				mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: RG+OFS:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
                 mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X, HEX_OUT_FORMAT, MOD16(cpu->ebuff.dr));
                 mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.result);
 				break;
 			case TRAP:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: TRAP:");
+				mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: TRAP:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
                 mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->ebuff.result);
 				break;
 			default:
-			    mvwprintw(win->mainWin, BUFF_LBL_START_Y+4, OP_LBL_X, "OP: DR: RESULT:");
+			    mvwprintw(win->mainWin, EBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: RESULT:");
 				mvwprintw(win->mainWin, EBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.op));
                 mvwprintw(win->mainWin, EBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->ebuff.dr));
                 mvwprintw(win->mainWin, EBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->ebuff.result);
@@ -244,57 +248,59 @@ void updateEBuffer(DEBUG_WIN_p win, CPU_p cpu){
 
 void updateMBuffer(DEBUG_WIN_p win, CPU_p cpu){
 	if (!cpu->mbuff.pc && !cpu->mbuff.op) {
-		mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP:");
+		mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP:");
 		mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, "NOP");
 	} else {
 		switch (cpu->mbuff.op) {
 			case AND:
 			case ADD:
 			case NOT:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: DR: RESULT:");
+				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: RESULT:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.dr));
                 mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.result);
 				break;
 			case BR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: NZP: PC+OFS:");
+				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: NZP: PC+OFS:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
-                mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, cpu->mbuff.dr);
+                mvwprintw(win->mainWin, MBUFF_N_VAL_Y_X, "%d", DISPLAY_N(cpu->mbuff.dr));
+				mvwprintw(win->mainWin, MBUFF_Z_VAL_Y_X, "%d", DISPLAY_Z(cpu->mbuff.dr));
+				mvwprintw(win->mainWin, MBUFF_P_VAL_Y_X, "%d", DISPLAY_P(cpu->mbuff.dr));
                 mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.result);
 				break;
 			case LD:
 			case LEA:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: DR: LDVAL:");
+				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: LDVAL:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.dr));
                 mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.result);
 				break;
 			case ST:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: SRV: PC+OFS:");
+				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: PC+OFS:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->mbuff.dr);
                 mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->mbuff.result);
 				break;
 			case STR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: SRV: RG+OFS:");
+				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: RG+OFS:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->mbuff.dr);
                 mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X+1, HEX_OUT_FORMAT, cpu->mbuff.result);
 
 				break;
 			case LDR:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: DR: LDVAL:");
+				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: LDVAL:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X, HEX_OUT_FORMAT, MOD16(cpu->mbuff.dr));
                 mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.result);
 				break;
 			case TRAP:
-				mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: TRAP:");
+				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: TRAP:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->mbuff.result);
 				break;
 			default:
-			    mvwprintw(win->mainWin, BUFF_LBL_START_Y+8, OP_LBL_X, "OP: DR: RESULT:");
+			    mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: RESULT:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.dr));
                 mvwprintw(win->mainWin, MBUFF_RESULT_VAL_Y_X, HEX_OUT_FORMAT, cpu->mbuff.result);
@@ -305,7 +311,7 @@ void updateMBuffer(DEBUG_WIN_p win, CPU_p cpu){
 
 void updateStore(DEBUG_WIN_p win, CPU_p cpu) {
 	if (cpu->opInStore == NOP_IN_STORE) {
-		mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "NOP        ");
+		mvwprintw(win->mainWin, STORE_VAL_Y_X, "NOP        ");
 	} else {
 		switch (cpu->opInStore) {
 			case ADD:
@@ -317,10 +323,10 @@ void updateStore(DEBUG_WIN_p win, CPU_p cpu) {
 			case LEA:
 			case JSR:
 			case RSV:
-				mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "x%.04X in R%d", cpu->valueInStore, cpu->dr_store%10);
+				mvwprintw(win->mainWin, STORE_VAL_Y_X, "x%.04X in R%d", cpu->valueInStore, MOD10(cpu->dr_store));
 				break;
 			default:
-				mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "-----------");
+				mvwprintw(win->mainWin, STORE_VAL_Y_X, "-----------");
 				break;
 		}
 	}

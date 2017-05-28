@@ -48,6 +48,7 @@ bool trap(CPU_p cpu, DEBUG_WIN_p win, Register vector) {
         }
         break;
     case HALT:
+	    displayBoldMessage(win, "Program Halted! Press any key...");
         return true;
     default:
         break;
