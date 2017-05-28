@@ -113,6 +113,7 @@ Joshua Meigs
 #define MAX_PREFETCH 8
 
 #define NOP 0x0000
+#define NOP_IN_STORE 0xFFFF
 
 typedef unsigned short Register;
 
@@ -127,7 +128,6 @@ typedef struct {
 typedef BREAKPOINT_s* BREAKPOINT_p;
 
 typedef unsigned short Register;
-
 
 // Condition Codes
 typedef struct {
@@ -165,17 +165,30 @@ typedef struct {
 } PREFETCH_s;
 
 typedef struct {
-    Register reg_file[REG_SIZE];
-    Register mar, mdr, ir, pc;
+    // Array containing all data registers
+	Register reg_file[REG_SIZE];
+    // Special registers
+	Register mar, mdr, ir, pc;
+	// ALU registers
     Register alu_a, alu_b, alu_r;
-    CC_s conCodes;
-    Register dr_store;
-    FBUFF_s fbuff;
+    // Condition codes (part of the psr)
+	CC_s conCodes;
+    // dr used in the store step
+	Register dr_store;
+	// current op in the store step
+    Register opInStore;
+	// current value being stored
+	Register valueInStore;
+	// Structs for each pipeline buffer
+	FBUFF_s fbuff;
     DBUFF_s dbuff;
     EMBUFF_s ebuff;
     EMBUFF_s mbuff;
+	// Struct to handle the prefetch queue
     PREFETCH_s prefetch;
+	// Stall counters for each pipeline phase
     short stalls[PIPELINE_PHASES];
+	// flag used to signal indirect access mode for LDI/STI
     bool indirectFlag;
 } CPU_s;
 

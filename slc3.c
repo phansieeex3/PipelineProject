@@ -465,12 +465,13 @@ void initPipeline(CPU_p cpu) {
     cpu->ebuff.imb = NOP;
     cpu->ebuff.result = NOP;
     cpu->ebuff.op = NOP;
+	cpu->opInStore = NOP_IN_STORE;
 	flushPipeline(cpu);
     initStall(cpu);
 }
 
 // Write results to register
-bool storeStep(CPU_p cpu) {
+void storeStep(CPU_p cpu) {
     cpu->dr_store = cpu->mbuff.dr;
     switch(cpu->mbuff.op) {
         case ADD:
@@ -481,10 +482,12 @@ bool storeStep(CPU_p cpu) {
         case LDI:
 		case LEA:
             cpu->reg_file[cpu->mbuff.dr] = cpu->mbuff.result;
+			cpu->valueInStore = cpu->reg_file[cpu->mbuff.dr];
             updateConCodes(cpu, cpu->reg_file[cpu->mbuff.dr]);
             break;
 		case JSR:
 			cpu->reg_file[RETURN_REG] = cpu->mbuff.pc + 1;
+			cpu->valueInStore = cpu->reg_file[RETURN_REG];
 			updateConCodes(cpu, cpu->reg_file[RETURN_REG]);
         case RSV:
             if (!cpu->mbuff.imb) {
@@ -494,11 +497,13 @@ bool storeStep(CPU_p cpu) {
                 cpu->reg_file[SP_REG]++;
             }
             break;
+			cpu->dr_store = SP_REG;
+			cpu->valueInStore = cpu->reg_file[SP_REG];
 			updateConCodes(cpu, cpu->reg_file[cpu->reg_file[SP_REG]]);
     }
 	
-	// return signal if store is processing an op or not
-	return (cpu->mbuff.pc && cpu->mbuff.op) ? true : false;
+	// set opInStore if store is processing an op or not
+	cpu->opInStore = (cpu->mbuff.pc) ? cpu->mbuff.op : NOP_IN_STORE;
 }
 
 // Memory access (LD/ST like commands)
@@ -581,23 +586,22 @@ void memoryStep(CPU_p cpu, bool finish) {
 	}
 }
 
-void calcStallForTraps(CPU_p cpu, bool opInStore) {
-	if (cpu->mbuff.pc && cpu->mbuff.op) {
+void calcStallForTraps(CPU_p cpu) {
+	if (cpu->mbuff.pc) {
 		cpu->stalls[P_EX]+=2;
-	} else if (opInStore) {
+	} else if (cpu->opInStore != NOP_IN_STORE) {
 		cpu->stalls[P_EX]++;
 	}
 }
 
 // Execute + Eval Address
-int executeStep(CPU_p cpu, DEBUG_WIN_p win, bool opInStore) {
+int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 	cpu->ebuff.op = cpu->dbuff.op;
 	cpu->ebuff.dr = cpu->dbuff.dr;
 	cpu->ebuff.pc = cpu->dbuff.pc;
 	cpu->alu_a = cpu->dbuff.opn1;
 	cpu->alu_b = cpu->dbuff.opn2;
 	
-	char temp[5]; // TODO REMOVE
 	switch(cpu->ebuff.op) {
 		case ADD:
 			cpu->alu_r = cpu->alu_a + cpu->alu_b;
@@ -653,7 +657,7 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win, bool opInStore) {
 		    cpu->ebuff.result = cpu->alu_r;
 			break;
 		case TRAP:
-			calcStallForTraps(cpu, opInStore);
+			calcStallForTraps(cpu);
 
 			if (cpu->stalls[P_EX]) {
 				cpu->ebuff.op = NOP;
@@ -863,7 +867,7 @@ void memHandler(CPU_p cpu) {
     }
 }
 
-int executeHandler(CPU_p cpu, DEBUG_WIN_p win, bool opInStore) {
+int executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
     int exResultSignal = 0;
 	
 	// If stalled, decrement counter
@@ -873,7 +877,7 @@ int executeHandler(CPU_p cpu, DEBUG_WIN_p win, bool opInStore) {
 		if (cpu->stalls[P_MEM]) {
 			cpu->stalls[P_EX] = cpu->stalls[P_MEM];
 		} else {
-            exResultSignal = executeStep(cpu, win, opInStore);
+            exResultSignal = executeStep(cpu, win);
 		}
     } else {
 		// Update stall and do nothing if next is stalled
@@ -959,13 +963,13 @@ Register getNextInstrToFinish(CPU_p cpu) {
 bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
     bool breakFlag = false;
     bool foundNext = false;
-	bool opInStore = false;
+	cpu->opInStore = false;
 	bool haltTriggered = false;
 	
 	int exControlSignal = 0;
     do {         
         // Store/Write Back
-		opInStore = storeStep(cpu);
+		storeStep(cpu);
         
 		// If next pc for step was used in Store
 		// flag that it was found to end step after this cycle
@@ -976,7 +980,7 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
         memHandler(cpu);
 		
 		// Exit if Execute Step processes a HALT Trap
-		exControlSignal = executeHandler(cpu, win, opInStore);
+		exControlSignal = executeHandler(cpu, win);
 		
 		if (exControlSignal == HALT_PROGRAM) {
 			haltTriggered = true;

@@ -303,6 +303,29 @@ void updateMBuffer(DEBUG_WIN_p win, CPU_p cpu){
 	}
 }
 
+void updateStore(DEBUG_WIN_p win, CPU_p cpu) {
+	if (cpu->opInStore == NOP_IN_STORE) {
+		mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "NOP        ");
+	} else {
+		switch (cpu->opInStore) {
+			case ADD:
+			case AND:
+			case NOT:
+			case LD:
+			case LDI:
+			case LDR:
+			case LEA:
+			case JSR:
+			case RSV:
+				mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "x%.04X in R%d", cpu->valueInStore, cpu->dr_store%10);
+				break;
+			default:
+				mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "-----------");
+				break;
+		}
+	}
+}
+
 void printStallSymbols(DEBUG_WIN_p win, CPU_p cpu) {
 	if(cpu->stalls[P_IF]) {
 		wattron(win->mainWin, A_STANDOUT); 
@@ -354,7 +377,7 @@ void updateBufferValues(DEBUG_WIN_p win, CPU_p cpu) {
 	printBox(win, MBUFF_BOARDER);
 	updateMBuffer(win, cpu);
     
-    mvwprintw(win->mainWin, STORE_LABEL_Y_X+7, "x%.04X in R%d", cpu->mdr, cpu->dr_store%10);
+    updateStore(win, cpu);
 	printStallSymbols(win, cpu);
 }
 
