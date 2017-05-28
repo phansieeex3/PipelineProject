@@ -70,7 +70,7 @@ Joshua Meigs
 #define HALT 0x0025
 
 // Constants
-#define MAXMEM 65536
+#define MAXMEM 65536 // TODO
 #define HEX_MODE 16
 #define EXPECTED_HEX_DIGITS 4
 #define MENU_SELECTION 0
@@ -83,6 +83,9 @@ Joshua Meigs
 #define BREAKPOINT_NOT_FOUND -1
 #define FLUSH_PIPELINE 1
 #define HALT_PROGRAM 2
+#define N_FLAG 4
+#define Z_FLAG 2
+#define P_FLAG 1
 
 // Menu Options
 #define LOAD '1'

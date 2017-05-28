@@ -383,13 +383,64 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
     updateScreen(win, cpu, memory, programLoaded); 
 }
 
+bool containsRegisterUpdate(EMBUFF_s buffer) {
+	switch (buffer.op) {
+		case ADD:
+		case AND:
+		case NOT:
+		case LD:
+		case LDI:
+		case LDR:
+		case LEA:
+		case JSR:
+		case RSV:
+			return true;
+		default:
+		    return false;
+	}
+}
 
-
+bool forwardCCValue(CPU_p cpu) {
+	int result = 0;
+	int value;
+	switch (cpu->mbuff.op) {
+		case ADD:
+		case AND:
+		case NOT:
+		case LD:
+		case LDI:
+		case LDR:
+		case LEA:
+		    value = cpu->mbuff.result;
+			break;
+		case JSR:
+		    value = cpu->mbuff.pc+1;
+			break;
+		case RSV:
+		    if (cpu->mbuff.imb) {
+				value = cpu->reg_file[SP_REG]+1;
+			} else {
+				value = cpu->reg_file[SP_REG]-1;
+			}
+			break;
+	}
+    return (value < 0 && NBIT(cpu->dbuff.dr))
+		   + (value == 0 && ZBIT(cpu->dbuff.dr))
+           + (value > 0 && PBIT(cpu->dbuff.dr));
+}
 
 int checkBEN(CPU_p cpu) {
-    return (cpu->conCodes.n && NBIT(cpu->dbuff.dr))
-              + (cpu->conCodes.z && ZBIT(cpu->dbuff.dr))
-              + (cpu->conCodes.p && PBIT(cpu->dbuff.dr));    
+    int result;
+	
+	if (containsRegisterUpdate(cpu->mbuff)) {
+		result = forwardCCValue(cpu);
+	} else {
+		result = (cpu->conCodes.n && NBIT(cpu->dbuff.dr))
+               + (cpu->conCodes.z && ZBIT(cpu->dbuff.dr))
+               + (cpu->conCodes.p && PBIT(cpu->dbuff.dr));
+	}
+
+    return result;	
 }
 
 void flushPipeline(CPU_p cpu) {
@@ -561,17 +612,6 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win, bool opInStore) {
 			cpu->ebuff.result = cpu->alu_r; 
 			break;
 		case BR:
-			// Stall until next OP doesnt write to reg
-			// Ignore this step for a NOP BR (Branch on nothing)
-			if (cpu->mbuff.pc && cpu->ebuff.pc) {
-				cpu->stalls[P_EX]++;
-			    cpu->ebuff.op = NOP;
-			    cpu->ebuff.dr = NOP;
-			    cpu->ebuff.result = NOP;
-			    cpu->ebuff.pc = NOP;
-				break;
-			}
-
             cpu->alu_b = cpu->dbuff.pc+1;
 			cpu->alu_r = cpu->alu_a + cpu->alu_b;
 		    if (checkBEN(cpu)) {
@@ -903,13 +943,13 @@ void fetchHandler(CPU_p cpu) {
 }
 
 Register getNextInstrToFinish(CPU_p cpu) {
-	if (cpu->mbuff.pc && cpu->mbuff.op) {
+	if (cpu->mbuff.pc) {
 		return cpu->mbuff.pc;
-	} else if (cpu->ebuff.pc && cpu->ebuff.op) {
+	} else if (cpu->ebuff.pc) {
 		return cpu->ebuff.pc;
-	} else if (cpu->dbuff.pc && cpu->dbuff.op) {
+	} else if (cpu->dbuff.pc) {
 		return cpu->dbuff.pc;
-	} else if (cpu->fbuff.pc && cpu->fbuff.ir) {
+	} else if (cpu->fbuff.pc) {
 		return cpu->fbuff.pc;
 	} else {
 		return cpu->prefetch.nextPC;
