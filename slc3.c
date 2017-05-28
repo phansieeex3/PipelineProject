@@ -383,6 +383,9 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
     updateScreen(win, cpu, memory, programLoaded); 
 }
 
+
+
+
 int checkBEN(CPU_p cpu) {
     return (cpu->conCodes.n && NBIT(cpu->dbuff.dr))
               + (cpu->conCodes.z && ZBIT(cpu->dbuff.dr))
@@ -416,8 +419,7 @@ void initPipeline(CPU_p cpu) {
 }
 
 // Write results to register
-void storeStep(CPU_p cpu) {
-    cpu->mdr = cpu->mbuff.result;
+bool storeStep(CPU_p cpu) {
     cpu->dr_store = cpu->mbuff.dr;
     switch(cpu->mbuff.op) {
         case ADD:
@@ -441,6 +443,9 @@ void storeStep(CPU_p cpu) {
             }
             break;
     }
+	
+	// return signal if store is processing an op or not
+	return (cpu->mbuff.pc && cpu->mbuff.op) ? true : false;
 }
 
 // Memory access (LD/ST like commands)
@@ -514,6 +519,7 @@ void memoryStep(CPU_p cpu, bool finish) {
         break; 
     } 
 
+	// Push NOP forward if forced to stall due to memory access time
     if (cpu->stalls[P_MEM])	{
 		cpu->mbuff.op = NOP;
         cpu->mbuff.dr = NOP;
@@ -522,14 +528,23 @@ void memoryStep(CPU_p cpu, bool finish) {
 	}
 }
 
+void calcStallForTraps(CPU_p cpu, bool opInStore) {
+	if (cpu->mbuff.pc && cpu->mbuff.op) {
+		cpu->stalls[P_EX]+=2;
+	} else if (opInStore) {
+		cpu->stalls[P_EX]++;
+	}
+}
+
 // Execute + Eval Address
-int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
+int executeStep(CPU_p cpu, DEBUG_WIN_p win, bool opInStore) {
 	cpu->ebuff.op = cpu->dbuff.op;
 	cpu->ebuff.dr = cpu->dbuff.dr;
 	cpu->ebuff.pc = cpu->dbuff.pc;
 	cpu->alu_a = cpu->dbuff.opn1;
 	cpu->alu_b = cpu->dbuff.opn2;
 	
+	char temp[5]; // TODO REMOVE
 	switch(cpu->ebuff.op) {
 		case ADD:
 			cpu->alu_r = cpu->alu_a + cpu->alu_b;
@@ -554,22 +569,25 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			    cpu->ebuff.pc = NOP;
 				break;
 			}
-			
+
+            cpu->alu_b = cpu->dbuff.pc+1;
+			cpu->alu_r = cpu->alu_a + cpu->alu_b;
 		    if (checkBEN(cpu)) {
-                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
-				cpu->prefetch.nextPC = cpu->ebuff.result;
-				// flush pipeline and prefetch
+                cpu->ebuff.result = cpu->alu_r;
+				cpu->prefetch.nextPC = cpu->alu_r;
 				flushPipeline(cpu);
                 return FLUSH_PIPELINE;				
             }
 			break;
 		case JSR:
+		    cpu->alu_b = cpu->dbuff.pc+1;
+			cpu->alu_r = cpu->alu_a + cpu->alu_b;
             if (cpu->dbuff.dr) { //jsr
-                cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
-				cpu->prefetch.nextPC = cpu->ebuff.result;//pc = pc+1 + pcoffset11	
+                cpu->ebuff.result = cpu->alu_r;
+				cpu->prefetch.nextPC = cpu->alu_r;
             } else { //jsrr
 			    cpu->ebuff.result = cpu->dbuff.opn1;
-                cpu->prefetch.nextPC = cpu->ebuff.result; //pc = baseR	
+                cpu->prefetch.nextPC = cpu->ebuff.result;
             }
 			flushPipeline(cpu);
             return FLUSH_PIPELINE;
@@ -583,20 +601,24 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 		case STI:
 		case LDI:
 		case LEA:
-		    cpu->ebuff.result = cpu->dbuff.pc + cpu->dbuff.opn1 + 1;
+		    cpu->alu_b = cpu->dbuff.pc+1;
+			cpu->alu_r = cpu->alu_a + cpu->alu_b;
+		    cpu->ebuff.result = cpu->alu_r;
 			break;
 		case LDR:
 		case STR:
-		    cpu->ebuff.result = cpu->dbuff.opn1 + cpu->dbuff.opn2;
+		    cpu->alu_r = cpu->alu_a + cpu->alu_b;
+		    cpu->ebuff.result = cpu->alu_r;
 			break;
 		case TRAP:
-		    if (cpu->mbuff.pc && cpu->mbuff.op) {
-				cpu->stalls[P_EX]++;
+			calcStallForTraps(cpu, opInStore);
+
+			if (cpu->stalls[P_EX]) {
 				cpu->ebuff.op = NOP;
 			    cpu->ebuff.dr = NOP;
 			    cpu->ebuff.result = NOP;
 			    cpu->ebuff.pc = NOP;
-			} else {
+			} else { // Execute TRAP subroutine
 				cpu->ebuff.result = cpu->dbuff.opn1;
 				if(trap(cpu, win, cpu->dbuff.opn1)) {
 					return HALT_PROGRAM;
@@ -612,6 +634,58 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 	return 0;
 }
 
+bool containsHazard(EMBUFF_s buffer, Register reg) {
+	switch (buffer.op) {
+		case ADD:
+		case AND:
+		case NOT:
+		case LD:
+		case LDI:
+		case LDR:
+		    if (reg == buffer.dr) {
+				return true;
+			}
+			return false;
+		default:
+		    return false;
+	}
+}
+
+// Returns the results from the alu for ADD/AND/NOT
+// Stalls the ID step for LD/LDI/LDR to wait for the correct
+// value to be read from memory
+Register fowardExecuteData(CPU_p cpu) {
+	switch (cpu->ebuff.op) {
+		case ADD:
+		case AND:
+		case NOT:
+		    return cpu->alu_r;
+		case LD:
+		case LDI:
+		case LDR:
+		    cpu->stalls[P_ID]++;
+			break;
+	}
+	
+	return NOP;
+}
+
+// Gets register value from reg while using data fowarding to deal with RAW hazards
+Register getRegisterValue(CPU_p cpu, Register reg) {
+	Register regValue;
+	if (containsHazard(cpu->ebuff, reg)) {
+		regValue = fowardExecuteData(cpu);
+	} else if (containsHazard(cpu->mbuff, reg)) {
+	    // TODO use MDR instead once implemented
+		regValue = cpu->mbuff.result;	
+	} else {
+		regValue = cpu->reg_file[reg];
+	}
+	
+	return regValue;
+}
+
+// Checks for RAW hazards and stalls based on when a hazard is found in the pipeline
 short checkRawHazards(CPU_p cpu, Register src) {
     if (cpu->dbuff.dr == src && cpu->dbuff.pc) {
         return 3;
@@ -625,6 +699,7 @@ short checkRawHazards(CPU_p cpu, Register src) {
     
 }
 
+// Checks for RAW hazards and stalls based on when a hazard is found in the pipeline
 short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
     if (cpu->dbuff.dr == src1 && cpu->dbuff.dr == src1 && cpu->dbuff.pc) {
         return 3;
@@ -642,23 +717,22 @@ void decodeStep(CPU_p cpu) {
     Register opn1;
     Register opn2;
     Register dr = DSTREG(cpu->fbuff.ir);
+	Register sr = SRCREG(cpu->fbuff.ir);
+	Register sr2 = SRCREG2(cpu->fbuff.ir);
+	
     switch((Register)OPCODE(cpu->fbuff.ir)) {
         case ADD:
         case AND:
-            opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+            opn1 = getRegisterValue(cpu, sr);
             if (IMMBIT(cpu->fbuff.ir)) {
-                    opn2 = SEXTIMMVAL(cpu->fbuff.ir);
-                    cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
-                    
+                    opn2 = SEXTIMMVAL(cpu->fbuff.ir);         
             } else {
-                    opn2 = cpu->reg_file[SRCREG2(cpu->fbuff.ir)];
-                    cpu->stalls[P_ID] = checkRawHazardsTwoSrcs(cpu, SRCREG(cpu->fbuff.ir), SRCREG2(cpu->fbuff.ir));
+                    opn2 = getRegisterValue(cpu, sr2);
             }
 			break;
 		case NOT:
-		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+		    opn1 = getRegisterValue(cpu, sr);
 			opn2 = SEXTIMMVAL(cpu->fbuff.ir);
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case BR:
 		    dr = NZPBITS(cpu->fbuff.ir);
@@ -676,11 +750,10 @@ void decodeStep(CPU_p cpu) {
 			opn2 = NOP;
 			break;
 		case STR:
-		    dr = cpu->reg_file[dr];
+		    dr = getRegisterValue(cpu, dr);
 		case LDR:
-		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+		    opn1 = getRegisterValue(cpu, sr);
 			opn2 = SEXTPCOFFSET6(cpu->fbuff.ir);
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case JSR:
             if(JSRBIT11(cpu->fbuff.ir)) { //jsr
@@ -689,15 +762,13 @@ void decodeStep(CPU_p cpu) {
                 opn2 = NOP;
             } else { //jsrr
                 dr = JSRBIT11(cpu->fbuff.ir);
-				opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+				opn1 = getRegisterValue(cpu, sr);
                 opn2 = NOP;
-				cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
             }
 			break;
 		case JMP:
-		    opn1 = cpu->reg_file[SRCREG(cpu->fbuff.ir)];
+		    opn1 = getRegisterValue(cpu, sr);
 			opn2 = NOP;
-			cpu->stalls[P_ID] = checkRawHazards(cpu, SRCREG(cpu->fbuff.ir));
 			break;
 		case TRAP:
 		    opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
@@ -706,8 +777,7 @@ void decodeStep(CPU_p cpu) {
 		case RSV:
 		    cpu->dbuff.imb = IMMBIT(cpu->fbuff.ir);
             if (!IMMBIT(cpu->fbuff.ir)) {
-                opn1 = cpu->reg_file[DSTREG(cpu->fbuff.ir)];
-                cpu->stalls[P_ID] = checkRawHazards(cpu, DSTREG(cpu->fbuff.ir));
+                opn1 = getRegisterValue(cpu, dr);
             } else {
                 opn1 = NOP;
             }
@@ -751,7 +821,7 @@ void memHandler(CPU_p cpu) {
     }
 }
 
-int executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
+int executeHandler(CPU_p cpu, DEBUG_WIN_p win, bool opInStore) {
     int exResultSignal = 0;
 	
 	// If stalled, decrement counter
@@ -761,7 +831,7 @@ int executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
 		if (cpu->stalls[P_MEM]) {
 			cpu->stalls[P_EX] = cpu->stalls[P_MEM];
 		} else {
-            exResultSignal = executeStep(cpu, win);
+            exResultSignal = executeStep(cpu, win, opInStore);
 		}
     } else {
 		// Update stall and do nothing if next is stalled
@@ -847,10 +917,13 @@ Register getNextInstrToFinish(CPU_p cpu) {
 bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
     bool breakFlag = false;
     bool foundNext = false;
+	bool opInStore = false;
+	bool haltTriggered = false;
+	
 	int exControlSignal = 0;
     do {         
         // Store/Write Back
-		storeStep(cpu);
+		opInStore = storeStep(cpu);
         
 		// If next pc for step was used in Store
 		// flag that it was found to end step after this cycle
@@ -861,10 +934,10 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
         memHandler(cpu);
 		
 		// Exit if Execute Step processes a HALT Trap
-		exControlSignal = executeHandler(cpu, win);
+		exControlSignal = executeHandler(cpu, win, opInStore);
 		
 		if (exControlSignal == HALT_PROGRAM) {
-			return false;
+			haltTriggered = true;
 		} else if (exControlSignal == FLUSH_PIPELINE){
 			continue;
 		}
@@ -887,9 +960,9 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
 		
 		// TODO - mem accessed flag removed as not being used
 		// TODO - can add an accessed flag to prefetch and/or memory if needed
-    } while ((mode == RUN_MODE && !breakFlag) || (mode == STEP_MODE && !foundNext));
+    } while (!haltTriggered && ((mode == RUN_MODE && !breakFlag) || (mode == STEP_MODE && !foundNext)));
 		
-	return true;
+	return (haltTriggered) ? false : true;
 }
 
 int monitor(CPU_p cpu, DEBUG_WIN_p win) {
