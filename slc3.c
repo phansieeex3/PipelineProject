@@ -129,10 +129,10 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
         clearPrompt(win);
         if (file != NULL) {
             promptUser(win,
-                    "File already exists, type Y to overwrite: ",
+                    "File exists, type Y to overwrite: ",
                     prompt);
             if (prompt[0] == 'Y' || prompt[0] == 'y') //ignore case
-                    {
+            {
                 saveToFile(input, start, end);
                 break;
             } else {
@@ -170,7 +170,7 @@ char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
     } else {
         clearPrompt(win);
         displayBoldMessage(win,
-                "Error: Invalid File. Press any key...");
+                "Invalid File. Press any key...");
     }
 
     return programLoaded;
@@ -255,10 +255,11 @@ void save(CPU_p cpu, DEBUG_WIN_p win)
 
     // Validate address
     if (strlen(startAddress) > EXPECTED_HEX_DIGITS
+	        || strlen(startAddress) == 0
             || startAddress[strspn(startAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Invalid address. Press any key to continue.");
+                "Invalid address. Press any key...");
 		return;
     }
 
@@ -270,20 +271,26 @@ void save(CPU_p cpu, DEBUG_WIN_p win)
 
     //Validate value
     if (strlen(endAddress) > EXPECTED_HEX_DIGITS
+	        || strlen(endAddress) == 0
             || endAddress[strspn(endAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Invalid address. Press any key to continue.");
+                "Invalid address. Press any key...");
 		return;
     }
 
     promptUser(win, "File name: ", input);
+	
+	if (strlen(input) == 0) {
+		displayBoldMessage(win, "Invalid file. Press any key...");
+		return;
+	}
 
     promptSaveToFile(cpu, input, startAddress, endAddress,
             win);
 
     displayBoldMessage(win,
-            "Save Complete. Press any key to continue.");
+            "Save Complete. Press any key...");
 }
 
 void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
@@ -297,10 +304,11 @@ void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
     clearPrompt(win);
 
     if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+	        || strlen(inputAddress) == 0
             || inputAddress[strspn(inputAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Error: Invalid address. Press any key to continue.");
+                "Invalid address. Press any key...");
     } else {
         displayMemAddress = strtol(inputAddress, &temp,
                 HEX_MODE);
@@ -323,10 +331,11 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
 
     // Validate address
     if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+	        || strlen(inputAddress) == 0
             || inputAddress[strspn(inputAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Invalid address. Press any key to continue.");
+                "Invalid address. Press any key...");
 		return;
     }
 
@@ -337,10 +346,11 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
 
     // Validate value
     if (strlen(input) > EXPECTED_HEX_DIGITS
+	        || strlen(input) == 0
             || input[strspn(input, "0123456789abcdefABCDEF")]
                     != 0) {
         displayBoldMessage(win,
-                "Invalid value. Press any key to continue.");
+                "Invalid value. Press any key...");
 		return;
     }
 
@@ -371,10 +381,11 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
 
     // Validate address
     if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
+	        || strlen(inputAddress) == 0
             || inputAddress[strspn(inputAddress,
                     "0123456789abcdefABCDEF")] != 0) {
         displayBoldMessage(win,
-                "Invalid address. Press any key to continue.");
+                "Invalid address. Press any key...");
 	    return;
     }
     
