@@ -1,6 +1,6 @@
 /*
  TCSS372 - Computer Architecture
- Project LC3 
+ Project - Simulated LC3 
  Group Members: 
  Shaun Coleman
  Phansa Chaonpoj
@@ -35,23 +35,27 @@ void updateConCodes(CPU_p cpu, short val) {
 bool trap(CPU_p cpu, DEBUG_WIN_p win, Register vector) {
     int i = 0;
     switch (vector) {
-    case GETCH:
-        cpu->reg_file[IO_REG] = mvwgetch(win->ioWin, win->ioY, win->ioX);
-        break;
-    case OUT:
-        writeCharToIOWin(win, cpu->reg_file[IO_REG]);
-        break;
-    case PUTS:
-        while (memory[cpu->reg_file[IO_REG] + i]) {
-            writeCharToIOWin(win, memory[cpu->reg_file[IO_REG] + i]);
-            i++;
-        }
-        break;
-    case HALT:
-	    displayBoldMessage(win, "Program Halted! Press any key...");
-        return true;
-    default:
-        break;
+		// Gets a single char and stores the value in R0
+		case GETCH:
+			cpu->reg_file[IO_REG] = mvwgetch(win->ioWin, win->ioY, win->ioX);
+			break;
+		// Writes a single char from R0 to the I/O Window
+		case OUT:
+			writeCharToIOWin(win, cpu->reg_file[IO_REG]);
+			break;
+		// Writes a string for the I/O Window (OUT until end of string is found)
+		case PUTS:
+			while (memory[cpu->reg_file[IO_REG] + i]) {
+				writeCharToIOWin(win, memory[cpu->reg_file[IO_REG] + i]);
+				i++;
+			}
+			break;
+		// Displays a halt message and stops the program
+		case HALT:
+			displayBoldMessage(win, "Program Halted! Press any key...");
+			return true;
+		default:
+			break;
     }
 
     wrefresh(win->ioWin);
@@ -59,7 +63,6 @@ bool trap(CPU_p cpu, DEBUG_WIN_p win, Register vector) {
 }
 
 // Loads a hex file into the memory of the controller
-
 char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
     char * t;
     int temp;
@@ -96,6 +99,7 @@ char loadFile(char * theInFile, CPU_p cpu) {
     return loadFileIntoMemory(inFile, cpu);
 }
 
+// Outputs the selected section of memory to the specified file
 void saveToFile(char * fileName, char * start, char * end) {
 
     FILE * file = fopen(fileName, "w+");
@@ -113,6 +117,8 @@ void saveToFile(char * fileName, char * start, char * end) {
 
 }
 
+// Prompts user to override a file if it exists
+// Cancels save if any character other than Y or y is entered
 void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
         DEBUG_WIN_p win) {
 
@@ -149,7 +155,9 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
 
     fclose(file);
 }
-    
+
+// Prompts a user for a file to load
+// if the file does not exists reports an error
 char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
 {
     char input[INPUT_LIMIT];
@@ -176,6 +184,7 @@ char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
     return programLoaded;
 }
 
+// Initializes all stall counters to zero for the pipeline
 void initStall(CPU_p cpu) {
     cpu->stalls[P_IF] = 0;
     cpu->stalls[P_ID] = 0;
@@ -184,9 +193,10 @@ void initStall(CPU_p cpu) {
     cpu->stalls[P_STORE] = 0;
 }
 
+// Pushes a removed breakpoint to the end of the array
 void updateBreakpoints(DEBUG_WIN_p win) {
     int i;
-    for(i = 0; i < MAXBREAK-1; i++) {//such magic
+    for(i = 0; i < MAXBREAK-1; i++) {
         if(win->breakpoints->breakpointArr[i] == NULL_BREAKPOINT) {
             win->breakpoints->breakpointArr[i] = win->breakpoints->breakpointArr[i+1];
             win->breakpoints->breakpointArr[i+1] = NULL_BREAKPOINT;
@@ -194,6 +204,8 @@ void updateBreakpoints(DEBUG_WIN_p win) {
     }
 }
 
+// Checks to see if a specified address has a breakpoint and returns index
+// or BREAKPOINT_NOT_FOUND
 int breakpointsContains(DEBUG_WIN_p win, int inputAddress) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
@@ -204,7 +216,7 @@ int breakpointsContains(DEBUG_WIN_p win, int inputAddress) {
     return BREAKPOINT_NOT_FOUND;
 }
 
-// TODO need both?
+// Checks if the specified PC is a breakpoint and returns a boolean true if it is and false otherwise
 bool breakpointsReached(DEBUG_WIN_p win, Register pc) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
@@ -215,6 +227,7 @@ bool breakpointsReached(DEBUG_WIN_p win, Register pc) {
     return false;
 }
 
+// Adds specified breakpoint if not present, or remove specified breakpoint if present.
 void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddress) {
     char* temp;
     unsigned short breakpointToAdd = strtol(inputAddress, &temp, HEX_MODE);
@@ -235,6 +248,7 @@ void modifyBreakPoint(DEBUG_WIN_p win ,BREAKPOINT_p breakpoints, char* inputAddr
     displayBoldMessage(win, "Breakpoints full; cannot add more.");
 }
 
+// Initializes all breakpoints as empty
 void initBreakPoints(BREAKPOINT_p breakpoints) {
     int i;
     for(i = 0; i < MAXBREAK; i++) {
@@ -243,6 +257,7 @@ void initBreakPoints(BREAKPOINT_p breakpoints) {
     breakpoints->emptySpaces = MAXBREAK;
 }
 
+// Prompts user for 
 void save(CPU_p cpu, DEBUG_WIN_p win)
 {
     char startAddress[INPUT_LIMIT];
@@ -293,6 +308,7 @@ void save(CPU_p cpu, DEBUG_WIN_p win)
             "Save Complete. Press any key...");
 }
 
+// Prompts users for a starting address for memory display and updates the UI
 void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
 
     int displayMemAddress = DEFAULT_MEM_ADDRESS;
@@ -317,6 +333,9 @@ void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
     }
 }
 
+// Prompts the user for an address to edit and a value to place in memory at that address
+// Updates memory based on user input, or returns without editing if invalid values are
+// entered.
 void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memory)
 {
     char *temp;
@@ -372,6 +391,7 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
     updateScreen(win, cpu, memory, programLoaded);
 }
 
+// Prompts the user for and address to add or remove from breakpoints.
 void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char programLoaded)
 {
     char inputAddress[INPUT_LIMIT];
@@ -395,6 +415,9 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
     updateScreen(win, cpu, memory, programLoaded); 
 }
 
+// Checks the specified buffer for OP codes that will update a register
+// returns true if found, false otherwise
+// used for forwarding CC
 bool containsRegisterUpdate(EMBUFF_s buffer) {
 	switch (buffer.op) {
 		case ADD:
@@ -412,6 +435,7 @@ bool containsRegisterUpdate(EMBUFF_s buffer) {
 	}
 }
 
+// Returns a BEN signal based on the the OP currently in the memory step
 bool forwardCCValue(CPU_p cpu) {
 	int result = 0;
 	short value;
@@ -437,14 +461,14 @@ bool forwardCCValue(CPU_p cpu) {
 			}
 			break;
 	}
-	
-	
-	
+
     return (value < 0 && NBIT(cpu->dbuff.dr))
 		   + (value == 0 && ZBIT(cpu->dbuff.dr))
            + (value > 0 && PBIT(cpu->dbuff.dr));
 }
 
+// Returns the BEN signal based on a forwarded value if needed
+// Otherwise uses the condition codes stored in the cpu
 int checkBEN(CPU_p cpu) {
     int result;
 	
@@ -459,6 +483,8 @@ int checkBEN(CPU_p cpu) {
     return result;	
 }
 
+// Flushes the pipeline before the execute phase
+// used for branch taken conditions
 void flushPipeline(CPU_p cpu) {
     cpu->fbuff.pc = NOP;
     cpu->fbuff.ir = NOP;
@@ -469,7 +495,9 @@ void flushPipeline(CPU_p cpu) {
     cpu->dbuff.opn2 = NOP;
     cpu->prefetch.index = MAX_PREFETCH;
 }
-    
+
+// Flushes the whole pipeline and sets all flags and counters back
+// to their original values
 void initPipeline(CPU_p cpu) {
     cpu->mbuff.pc = NOP;
     cpu->mbuff.dr = NOP;
@@ -487,7 +515,7 @@ void initPipeline(CPU_p cpu) {
     initStall(cpu);
 }
 
-// Write results to register
+// STORE/WRITE BACK - Writes to registers if required by the current OP
 void storeStep(CPU_p cpu) {
     cpu->dr_store = cpu->mbuff.dr;
     switch(cpu->mbuff.op) {
@@ -524,13 +552,13 @@ void storeStep(CPU_p cpu) {
 	cpu->opInStore = (cpu->mbuff.pc) ? cpu->mbuff.op : NOP_IN_STORE;
 }
 
-// Memory access (LD/ST like commands)
+// MEMORY - Implements the memory step and simulated memory access times
+// Memory access times simulated by stalling for 10 cycles before resuming
 void memoryStep(CPU_p cpu, bool finish) {
     cpu->mbuff.op = cpu->ebuff.op;
     cpu->mbuff.dr = cpu->ebuff.dr;
     cpu->mbuff.pc = cpu->ebuff.pc;
     cpu->mbuff.result = cpu->ebuff.result;
-    // implement stall for ten cycles
     switch(cpu->mbuff.op) {
         case LD:
         case LDR:
@@ -576,7 +604,6 @@ void memoryStep(CPU_p cpu, bool finish) {
 			} else {
 				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 			} 
-			
 			break;
         case RSV:
             if (!cpu->ebuff.imb) {
@@ -597,6 +624,8 @@ void memoryStep(CPU_p cpu, bool finish) {
 	}
 }
 
+// Calculates the cycles to stall to clear instructions
+// ahead of a trap before it executes in the Execute step
 void calcStallForTraps(CPU_p cpu) {
 	if (cpu->mbuff.pc) {
 		cpu->stalls[P_EX]+=2;
@@ -605,7 +634,7 @@ void calcStallForTraps(CPU_p cpu) {
 	}
 }
 
-// Execute + Eval Address
+// EXECUTE - implements the execute step
 int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 	cpu->ebuff.op = cpu->dbuff.op;
 	cpu->ebuff.dr = cpu->dbuff.dr;
@@ -691,6 +720,7 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 	return 0;
 }
 
+// Checks the specified buffer for RAW hazards based on the passed src register
 bool containsHazard(EMBUFF_s buffer, Register reg) {
 	switch (buffer.op) {
 		case ADD:
@@ -771,7 +801,7 @@ short checkRawHazardsTwoSrcs(CPU_p cpu, Register src1, Register src2) {
     return 0;
 }
 
-// decode IR and get values out of registers
+// DECODE - implements the Decode step and gets values out of registers
 void decodeStep(CPU_p cpu) {
     Register opn1;
     Register opn2;
@@ -860,11 +890,15 @@ void decodeStep(CPU_p cpu) {
     
 }
 
+// Checks for stall signals and handles the stall counter before
+// executing the memory step
 void memHandler(CPU_p cpu) {
     bool finish = false;
 	
 	if (cpu->stalls[P_MEM]) {
 		cpu->stalls[P_MEM]--;
+		
+		// if a stall finished indicate the step can complete
 		if(!cpu->stalls[P_MEM]) {
 			finish = true;
 		}
@@ -872,7 +906,7 @@ void memHandler(CPU_p cpu) {
 	
 	if (!cpu->stalls[P_MEM]) {
 	    memoryStep(cpu, finish);
-    } else {
+    } else { // push NOP forward (0 for all fields)
         cpu->mbuff.op = NOP;
         cpu->mbuff.dr = NOP;
         cpu->mbuff.result = NOP;
@@ -880,6 +914,8 @@ void memHandler(CPU_p cpu) {
     }
 }
 
+// Checks for stall signals and handles the stall counter before
+// executing the execute step
 int executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
     int exResultSignal = 0;
 	
@@ -895,6 +931,7 @@ int executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
     } else {
 		// Update stall and do nothing if next is stalled
         if (cpu->stalls[P_MEM]) {
+		   // if stall signal is found, update stall counter for this step
 		   if (cpu->stalls[P_EX] < cpu->stalls[P_MEM]){
 			    cpu->stalls[P_EX] = cpu->stalls[P_MEM];
 		   }
@@ -909,6 +946,8 @@ int executeHandler(CPU_p cpu, DEBUG_WIN_p win) {
 	return exResultSignal;
 }
 
+// Checks for stall signals and handles the stall counter before
+// executing the decode step
 void decodeHandler(CPU_p cpu) {
 	// If stalled, decrement counter
 	if (cpu->stalls[P_ID]) cpu->stalls[P_ID]--;
@@ -935,6 +974,8 @@ void decodeHandler(CPU_p cpu) {
     }
 }
 
+// Checks for stall signals and handles the stall counter before
+// executing the fetch step
 void fetchHandler(CPU_p cpu) {
 	// If stalled, decrement counter
 	if (cpu->stalls[P_IF]) cpu->stalls[P_IF]--;
@@ -948,6 +989,7 @@ void fetchHandler(CPU_p cpu) {
 			cpu->prefetch.index++;
 		}
     } else {
+		// Update stall and do nothing if next is stalled
         if (cpu->stalls[P_ID]) {
 			if (cpu->stalls[P_IF] < cpu->stalls[P_ID]) {
 		        cpu->stalls[P_IF] = cpu->stalls[P_ID];
@@ -959,6 +1001,7 @@ void fetchHandler(CPU_p cpu) {
     }
 }
 
+// Searches the pipeline and returns the pc for the next instruction that will complete
 Register getNextInstrToFinish(CPU_p cpu) {
 	if (cpu->mbuff.pc) {
 		return cpu->mbuff.pc;
@@ -973,13 +1016,15 @@ Register getNextInstrToFinish(CPU_p cpu) {
 	}
 }
 
+// Main controller for the cpu
 bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p breakpoints) {
     bool breakFlag = false;
     bool foundNext = false;
 	cpu->opInStore = false;
 	bool haltTriggered = false;
-	
 	int exControlSignal = 0;
+	
+	// One loop equals one cycle of execution
     do {         
         // Store/Write Back
 		storeStep(cpu);
@@ -990,40 +1035,48 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
             foundNext = true;                  
         }
 
+		// Memory Step
         memHandler(cpu);
 		
-		// Exit if Execute Step processes a HALT Trap
+		// Execute Step
 		exControlSignal = executeHandler(cpu, win);
 		
+		// Exit if Execute Step processes a HALT Trap
+		// Skip to next cycle if pipeline is to be flushed this cycle
 		if (exControlSignal == HALT_PROGRAM) {
 			haltTriggered = true;
 		} else if (exControlSignal == FLUSH_PIPELINE){
 			continue;
 		}
 
+		// Decode Step
         decodeHandler(cpu);
         
         // Instruction prefetch
         if (cpu->prefetch.index == MAX_PREFETCH) {
-            
             while(cpu->prefetch.index > 0) {
                 cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->prefetch.nextPC + (MAX_PREFETCH - cpu->prefetch.index)];              
                 cpu->prefetch.index--;               
-                //cpu->stalls[P_IF]+= MAX_PREFETCH * MEMORY_ACCESS_STALL_TIME;
+                // Stall for 10 cycles for each instruction that needs to be fetched
+				cpu->stalls[P_IF]+= MAX_PREFETCH * MEMORY_ACCESS_STALL_TIME;
             }         
         }
 		
+		// Fetch step
 		fetchHandler(cpu);
 		
+		// check if the next instruction to complete is a breakpoint
 		breakFlag = breakpointsReached(win, getNextInstrToFinish(cpu));
 		
-		// TODO - mem accessed flag removed as not being used
-		// TODO - can add an accessed flag to prefetch and/or memory if needed
     } while (!haltTriggered && ((mode == RUN_MODE && !breakFlag) || (mode == STEP_MODE && !foundNext)));
-		
+	
+	// Returns if the program is currently running (true) or halted (false)
 	return (haltTriggered) ? false : true;
 }
 
+// Main debug monitor
+// continues to loop, prompting user for menu items until exit is selected
+// updates the UI after returning from the controller_pipelined method
 int monitor(CPU_p cpu, DEBUG_WIN_p win) {
     // check to make sure both pointers are not NULLS
     if (!cpu) return NULL_CPU_POINTER;
@@ -1104,6 +1157,7 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
     } //end for loop
 }
 
+// Initializes the cpu and win structs and starts the debug monitor
 int main(int argc, char* argv[]) {
     char *temp;
 
