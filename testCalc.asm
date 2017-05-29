@@ -1,6 +1,6 @@
 .ORIG x3000
 
-LEA R6, StackBase 
+LEA R6, StackBase
 ADD R6,R6,#-1 
 LEA R0,PromptMsg
 PUTS
@@ -9,21 +9,41 @@ OUT
 Test LD R1,NegX 
 ADD R1,R1,R0
 BRz Exit
-LD R1,NegC 
-ADD R1,R1,R0
+LD R1, NegC 
+ADD R1,R1 , R0
 BRz OpClear 
-LD R1,NegPlus 
-ADD R1,R1,R0
-BRz OpAdd
-LD R1,NegMult 
-ADD R1,R1,R0
-BRz OpMult
+
+LD R1, NegPlus 
+ADD R1, R1,R0
+BRnp NotAdd
+JSR OpAdd
+ADD R0, R0, #0
+BRz NewCommand
+JSR PUSH
+JSR OpDisplay
+BRnzp NewCommand
+NotAdd
+LD R1, NegMult 
+ADD R1, R1, R0
+BRnp NotMult
+JSR OpMult
+JSR PUSH
+JSR OpDisplay
+BRnzp NewCommand
+NotMult
 LD R1,NegMinus
 ADD R1,R1,R0
-BRz OpNeg
+BRnp NotNeg
+JSR OpNeg
+JSR PUSH
+JSR OpDisplay
+BRnzp NewCommand
+NotNeg
 LD R1,NegD
 ADD R1,R1,R0
-BRz OpDisplay
+BRnp NotDisplay
+JSR OpDisplay
+NotDisplay
 BRnzp PushValue
 NewCommand LEA R0,PromptMsg
 PUTS
@@ -31,10 +51,6 @@ GETC
 OUT
 BRnzp Test
 Exit HALT
-
-
-
-
 
 PromptMsg .FILL x000A
 .STRINGZ "Enter a command: "
@@ -44,9 +60,6 @@ NegPlus .FILL XFFD5
 NegMinus .FILL XFFD3
 NegMult .FILL XFFD6
 NegD .FILL xFFBC  
-
-
-
 
 PushValue LEA R1,ASCIIBUFF 
 LD R2,MaxDigits
@@ -79,34 +92,49 @@ TooManyDigits .FILL x000A
 MaxDigits .FILL x0003  
 
 OpAdd
+ST R7, SAVERR7
 JSR POP
-ADD R5, R5, #0
-BRp Exit
+LD R3, ErrorValue
+ADD R5, R0, R3
+BRz ExitAdd
 ADD R1, R0, #0
 JSR POP
-ADD R5, R5, #0
-BRp Restore1
+ADD R5, R0, R3
+BRz Restore1
 ADD R0, R0, R1
+ADD R6, R6, #-3
+STR R0, R6, #0
 JSR RangeCheck
-BRp Restore2
-JSR PUSH
-BRnzp NewCommand 
-
+LDR R0, R6, #0
+ADD R6, R6, #3
+ADD R0, R0, #0
+BRz Restore2
+LD R7, SAVERR7
+RET
 Restore2 ADD R6, R6, #-1
 Restore1 ADD R6, R6, #-1
+LD R7, SAVERR7
+RET
+ExitAdd AND R0, R0, #0
+LD R7, SAVERR7
+RET
 
+
+ErrorValue .FILL #-1000
 
 SAVERR7 .FILL X0100
 
 OpMult 
-AND R3,R3,#0 
+AND R3,R3,#0
+ST R7, SAVERR7
 JSR POP 
-ADD R5,R5,#0 
-BRp Exit 
+LD R4, ErrorValue
+ADD R5,R0, R4 
+BRz Exit 
 ADD R1,R0,#0 
 JSR POP
-ADD R5,R5,#0 
-BRp Restore1 
+ADD R5,R0, R4 
+BRz Restore1 
 ADD R2,R0,#0 
 BRzp PosMultiplier
 ADD R3,R3,#1 
@@ -115,19 +143,82 @@ ADD R2,R2,#1
 
 PosMultiplier AND R0,R0,#0 
 ADD R2,R2,#0
-BRz PushMult
+BRz ExitMult
 MultLoop ADD R0,R0,R1
 ADD R2,R2,#-1 
 BRp MultLoop
+ADD R6, R6, #-3
+STR R0, R6, #0
 JSR RangeCheck
-ADD R5,R5,#0
+LDR R0, R6, #0
+ADD R6, R6, #3
+ADD R0, R0, #0
 BRp Restore2
 ADD R3,R3,#0
-BRz PushMult
+BRz ExitMult
 NOT R0, R0
 ADD R0,R0,#1
-PushMult JSR PUSH
+LD R7, SAVERR7
+RET
+ExitMult LD R7, SAVERR7
+RET
+
+Save .FILL x0300
+StackMax .BLKW 10
+StackBase .FILL x0000
+StackClose .FILL #0
+
+OpNeg ST R7, SAVERR7
+JSR POP
+LD R3, ErrorValue
+ADD R5,R0, R3
+BRz NegExit
+NOT R0, R0
+ADD R0,R0, #1
+LD R7, SAVERR7
+RET
+NegExit LD R7, SAVERR7
+RET 
+
+OpDisplay JSR POP
+LD R3, ErrorValue
+ADD R5, R0, R3
+BRz NewCommand
+JSR BinarytoASCII
+LD R0,NewlineChar
+OUT
+LEA R0, ASCIIBUFF
+PUTS
+ADD R6,R6,#-1
 BRnzp NewCommand
+NewlineChar .FILL x000A
+
+OpClear LEA R6,StackBase
+ADD R6,R6,#1
+BRnzp NewCommand
+
+
+POP 
+LEA R0,StackBase
+NOT R0, R0
+ADD R0,R0,#2 
+ADD R0,R0,R6
+BRz Underflow
+LDR R0,R6,#0 
+ADD R6,R6,#1
+RET
+Underflow ST R7,Save
+LEA R0,UnderflowMsg
+PUTS 
+LD R7, Save 
+LD R0,  FailureValue
+RET
+
+FailureValue .FILL #1000
+UnderflowMsg .FILL X000A
+.STRINGZ "Error: Too Few Values on the Stack."
+
+
 
 ASCIItoBinary AND R0, R0, #0
 ADD R1, R1, #0
@@ -181,57 +272,10 @@ LookUp100 .FILL #0
 .FILL #800
 .FILL #900
 
-OpNeg ST R7, SAVERR7
-JSR POP
-ADD R5,R5, #0
-BRp Exit
-NOT R0, R0
-ADD R0,R0, #1
-JSR PUSH
-LD R7, SAVERR7
-BRnzp NewCommand 
 
-OpDisplay JSR POP
-ADD R5, R5, #0
-BRp NewCommand
-JSR BinarytoASCII
-LD R0,NewlineChar
-OUT
-LEA R0, ASCIIBUFF
-PUTS
-ADD R6,R6,#-1
-BRnzp NewCommand
-NewlineChar .FILL x000A
 
-POP 
-LEA R0,StackBase
-NOT R0, R0
-ADD R0,R0,#2 
-ADD R0,R0,R6
-BRz Underflow
-LDR R0,R6,#0 
-ADD R6,R6,#1
-AND R5,R5,#0
-RET
 
-OpClear LEA R6,StackBase
-ADD R6,R6,#1
-BRnzp NewCommand
 
-Underflow ST R7,Save
-LEA R0,UnderflowMsg
-PUTS 
-LD R7,Save 
-AND R5,R5,#0
-ADD R5,R5,#1
-RET
-
-UnderflowMsg .FILL X000A
-Save .FILL x0300
-StackMax .BLKW 9
-StackBase .FILL x0000
-
-.STRINGZ "Error: Too Few Values on the Stack."
 
 BinarytoASCII LEA R1,ASCIIBUFF
 ADD R0,R0,#0 
@@ -270,21 +314,23 @@ RET
 
 
 
-RangeCheck LD R5,Neg999
-ADD R4,R0,R5
+RangeCheck LDR R3, R6, #0
+LD R5,Neg999
+ADD R4,R3,R5
 BRp BadRange 
 LD R5, Pos999
-ADD R4,R0,R5
+ADD R4,R3,R5
 BRn BadRange
-AND R5,R5,#0 
+AND R0,R0,#0 
 RET
 BadRange ST R7, RangeSave 
 LEA R0,RangeErrorMsg
 TRAP x22 
 LD R7, RangeSave 
-AND R5,R5,#0
-ADD R5,R5,#1
+AND R0,R0,#0
+ADD R0,R0,#1
 RET
+
 
 RangeSave .FILL x0200
 Neg999 .FILL #-999
@@ -320,10 +366,6 @@ SavePush .FILL X0000
 Save1 .FILL X0000
 OverflowMsg .STRINGZ "Error: Stack is Full."
 
-
-
-
-
 ASCIIplus .FILL X002B
 ASCIIminus .FILL X002D
 ASCIIoffset .FILL X0030
@@ -332,14 +374,5 @@ Pos100 .FILL X0064
 Neg10 .FILL XFFF6
 
 
-
-
-
-
-
-
-
-
-
-
 .END
+
