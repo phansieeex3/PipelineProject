@@ -9,6 +9,7 @@ Joshua Meigs
 #include "slc3.h"
 #include "slc3_ui.h"
 
+// Prints the Labels and non-changing elements to the screen
 void printLabels(DEBUG_WIN_p win) {
      //Titles
      box(win->mainWin, 0, 0);
@@ -46,7 +47,7 @@ void updateMemory(DEBUG_WIN_p win, unsigned short* memory, unsigned short mem_in
      win->memAddress = mem_index;
      for (int i = 0; i < MAX_MEM; i++) {
         mvwprintw(win->mainWin, REG_MEM_START_Y + i, MEM_LABEL_X, HEX_OUT_LABEL, win->memAddress + i);
-        mvwprintw(win->mainWin, REG_MEM_START_Y + i, MEM_VAL_X, HEX_OUT_FORMAT, memory[win->memAddress + i]);
+        mvwprintw(win->mainWin, REG_MEM_START_Y + i, MEM_VAL_X, HEX_OUT_FORMAT, memory[win->memAddress + i - MEMORY_OFFSET]);
      }
      
 }

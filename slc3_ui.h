@@ -41,7 +41,6 @@ Joshua Meigs
 
 #define MENU1_Y_X 19,1
 #define MENU2_Y_X 20,1
-//#define PROMPT_Y_X 20,1
 #define PROMPT_DISPLAY_Y 20
 #define PROMPT_DISPLAY_X 26
 
@@ -60,9 +59,6 @@ Joshua Meigs
 #define HEX_OUT_FORMAT "x%.04X"
 #define HEX_OUT_SINGLE "x%.01X"
 #define REG_OUT_FORMAT "R%d:"
-
-#define STALL_STR " S "
-#define STALL_ERS_STR "   "
 
 /******** New Constants for Pipeline display ***********/
 #define FBUFF_LABEL_Y_X 2,16
@@ -146,6 +142,9 @@ Joshua Meigs
 #define DISPLAY_N(x) ((x&4)>>2)
 #define DISPLAY_Z(x) ((x&2)>>1)
 #define DISPLAY_P(x) (x&1)
+
+#define STALL_STR " S "
+#define STALL_ERS_STR "   "
 
 // Print Main Window Labels
 void printLabels(DEBUG_WIN_p);

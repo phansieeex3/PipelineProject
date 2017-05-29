@@ -45,8 +45,8 @@ bool trap(CPU_p cpu, DEBUG_WIN_p win, Register vector) {
 			break;
 		// Writes a string for the I/O Window (OUT until end of string is found)
 		case PUTS:
-			while (memory[cpu->reg_file[IO_REG] + i]) {
-				writeCharToIOWin(win, memory[cpu->reg_file[IO_REG] + i]);
+			while (memory[cpu->reg_file[IO_REG] + i - MEMORY_OFFSET]) {
+				writeCharToIOWin(win, memory[cpu->reg_file[IO_REG] + i - MEMORY_OFFSET]);
 				i++;
 			}
 			break;
@@ -82,7 +82,7 @@ char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
                 || line[strspn(line, "0123456789abcdefABCDEF")] != 0) {
             return false;
         }
-        memory[temp] = strtol(line, &t, HEX_MODE);
+        memory[temp - MEMORY_OFFSET] = strtol(line, &t, HEX_MODE);
         temp++;
     }
 
@@ -109,7 +109,7 @@ void saveToFile(char * fileName, char * start, char * end) {
     int i = strtol(start, &temp1, HEX_MODE);
 
     for (; i <= strtol(end, &temp2, HEX_MODE); i++) {
-        fprintf(file, "%04X\r\n", memory[i]);
+        fprintf(file, "%04X\r\n", memory[i - MEMORY_OFFSET]);
 
     }
 
@@ -374,7 +374,7 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
     // Update Memory
     displayMemAddress = strtol(inputAddress, &temp,
             HEX_MODE);
-    memory[displayMemAddress] = strtol(input, &temp,
+    memory[displayMemAddress - MEMORY_OFFSET] = strtol(input, &temp,
             HEX_MODE);
 
     // Update Memory display                                
@@ -561,7 +561,7 @@ void memoryStep(CPU_p cpu, bool finish) {
         case LD:
         case LDR:
 			if(finish) {
-				cpu->mbuff.result = memory[cpu->ebuff.result];
+				cpu->mbuff.result = memory[cpu->ebuff.result - MEMORY_OFFSET];
 			} else {           
 				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 			}
@@ -569,10 +569,10 @@ void memoryStep(CPU_p cpu, bool finish) {
         case LDI:
 			if(finish) {
 				if(cpu->indirectFlag) {
-					cpu->mbuff.result = memory[cpu->ebuff.result];
+					cpu->mbuff.result = memory[cpu->ebuff.result - MEMORY_OFFSET];
 					cpu->indirectFlag = false;
 				} else {
-					cpu->ebuff.result = memory[cpu->ebuff.result];
+					cpu->ebuff.result = memory[cpu->ebuff.result - MEMORY_OFFSET];
 					cpu->indirectFlag = true;
 					cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 				}
@@ -583,7 +583,7 @@ void memoryStep(CPU_p cpu, bool finish) {
         case ST:
         case STR:
 			if(finish) {
-				memory[cpu->ebuff.result] = cpu->ebuff.dr;
+				memory[cpu->ebuff.result - MEMORY_OFFSET] = cpu->ebuff.dr;
 			} else {
 				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 			} 
@@ -591,11 +591,11 @@ void memoryStep(CPU_p cpu, bool finish) {
         case STI:
 			if(finish) {
 				if(cpu->indirectFlag) {
-					cpu->mbuff.result = memory[cpu->ebuff.result];
-					memory[cpu->ebuff.result] = cpu->ebuff.dr;
+					cpu->mbuff.result = memory[cpu->ebuff.result - MEMORY_OFFSET];
+					memory[cpu->ebuff.result - MEMORY_OFFSET] = cpu->ebuff.dr;
 					cpu->indirectFlag = false;
 				} else {
-			        cpu->ebuff.result = memory[cpu->ebuff.result];
+			        cpu->ebuff.result = memory[cpu->ebuff.result - MEMORY_OFFSET];
 					cpu->indirectFlag = true;
 					cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
 				}
@@ -605,9 +605,9 @@ void memoryStep(CPU_p cpu, bool finish) {
 			break;
         case RSV:
             if (!cpu->ebuff.imb) {
-                memory[cpu->reg_file[SP_REG]-1] = cpu->ebuff.result; 
+                memory[cpu->reg_file[SP_REG]-1- MEMORY_OFFSET] = cpu->ebuff.result; 
             } else {
-                cpu->mbuff.result = memory[cpu->reg_file[SP_REG]];
+                cpu->mbuff.result = memory[cpu->reg_file[SP_REG]- MEMORY_OFFSET];
             }
             cpu->mbuff.imb = cpu->ebuff.imb;
         break; 
@@ -1053,7 +1053,8 @@ bool controller_pipelined(CPU_p cpu, DEBUG_WIN_p win, int mode, BREAKPOINT_p bre
         // Instruction prefetch
         if (cpu->prefetch.index == MAX_PREFETCH) {
             while(cpu->prefetch.index > 0) {
-                cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] = memory[cpu->prefetch.nextPC + (MAX_PREFETCH - cpu->prefetch.index)];              
+                cpu->prefetch.instructs[MAX_PREFETCH - cpu->prefetch.index] 
+				     = memory[cpu->prefetch.nextPC + (MAX_PREFETCH - cpu->prefetch.index) - MEMORY_OFFSET];              
                 cpu->prefetch.index--;               
                 // Stall for 10 cycles for each instruction that needs to be fetched
 				cpu->stalls[P_IF]+= MAX_PREFETCH * MEMORY_ACCESS_STALL_TIME;

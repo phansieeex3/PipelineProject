@@ -39,7 +39,7 @@ Joshua Meigs
 #define JSR 4 // and JSRR
 #define STR 7
 #define LDR 6
-#define RSV 13 //reserve :D
+#define RSV 13 // POP/PUSH
 #define LDI 10
 #define STI 11
 
@@ -71,7 +71,8 @@ Joshua Meigs
 #define HALT 0x0025
 
 // Constants
-#define MAXMEM 65536 // TODO
+#define MAXMEM 4096 // 0x3000 - 0x3FFF
+#define MEMORY_OFFSET 0x3000
 #define HEX_MODE 16
 #define EXPECTED_HEX_DIGITS 4
 #define MENU_SELECTION 0
@@ -98,8 +99,9 @@ Joshua Meigs
 #define BREAKPOINT '8'
 #define EXIT '9'
 
-
+// Pipeline constants
 #define PIPELINE_PHASES 5
+// Indices for Stall counter array
 #define P_STORE 4
 #define P_MEM 3
 #define P_EX 2
@@ -107,23 +109,22 @@ Joshua Meigs
 #define P_IF 0
 
 #define MEMORY_ACCESS_STALL_TIME 10
-
-#define STEP_MODE 0
-#define RUN_MODE 1
-#define MICRO_STEP_MODE 2
 #define MAX_PREFETCH 8
 
 #define NOP 0x0000
 #define NOP_IN_STORE 0xFFFF
 
+// Run modes for the controller
+#define STEP_MODE 0
+#define RUN_MODE 1
+#define MICRO_STEP_MODE 2
+
 typedef unsigned short Register;
 
+// A struct used to hold and manage breakpoints
 typedef struct {
     int emptySpaces : MAXBREAK;
-
     int breakpointArr[MAXBREAK];
-    //Register breakPointArr[MAXBREAK];
-    
 } BREAKPOINT_s;
 
 typedef BREAKPOINT_s* BREAKPOINT_p;
