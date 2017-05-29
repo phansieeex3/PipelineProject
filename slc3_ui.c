@@ -6,7 +6,7 @@ Shaun Coleman
 Phansa Chaonpoj
 Joshua Meigs
 */
-
+#include "slc3.h"
 #include "slc3_ui.h"
 
 void printLabels(DEBUG_WIN_p win) {

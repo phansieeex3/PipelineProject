@@ -6,10 +6,10 @@ Shaun Coleman
 Phansa Chaonpoj
 Joshua Meigs
 */
+#pragma once
 #include <ncurses.h>			/* ncurses.h includes stdio.h */  
 #include <stdlib.h>
 #include <string.h> 
-#include "slc3.h"
 
 #define WIN_WIDTH 70
 #define MAIN_WIN_HEIGHT 22
@@ -146,17 +146,6 @@ Joshua Meigs
 #define DISPLAY_N(x) ((x&4)>>2)
 #define DISPLAY_Z(x) ((x&2)>>1)
 #define DISPLAY_P(x) (x&1)
-
-typedef struct {
-    WINDOW *mainWin;
-    WINDOW *ioWin;
-    unsigned short memAddress;
-    unsigned short maxY, maxX;
-    unsigned short ioY, ioX;
-    BREAKPOINT_p breakpoints;
-} DEBUG_WIN_s;
-
-typedef DEBUG_WIN_s* DEBUG_WIN_p;
 
 // Print Main Window Labels
 void printLabels(DEBUG_WIN_p);

@@ -6,8 +6,8 @@
  Phansa Chaonpoj
  Joshua Meigs
  */
-
-#include "slc3_ui.c"
+#include "slc3.h"
+#include "slc3_ui.h"
 
 // TODO: FIX MAXMEM
 // you can define a simple memory module here for this program
@@ -158,8 +158,7 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
 
 // Prompts a user for a file to load
 // if the file does not exists reports an error
-char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win)
-{
+char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win) {
     char input[INPUT_LIMIT];
     char programLoaded;
     short orig = DEFAULT_MEM_ADDRESS;
@@ -257,9 +256,9 @@ void initBreakPoints(BREAKPOINT_p breakpoints) {
     breakpoints->emptySpaces = MAXBREAK;
 }
 
-// Prompts user for 
-void save(CPU_p cpu, DEBUG_WIN_p win)
-{
+// Prompts user for the starting/ending address in memory and
+// a file to save the selected range of memory values in
+void save(CPU_p cpu, DEBUG_WIN_p win) {
     char startAddress[INPUT_LIMIT];
     char endAddress[INPUT_LIMIT];
     char input[INPUT_LIMIT];
@@ -336,8 +335,7 @@ void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
 // Prompts the user for an address to edit and a value to place in memory at that address
 // Updates memory based on user input, or returns without editing if invalid values are
 // entered.
-void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memory)
-{
+void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memory) {
     char *temp;
     char inputAddress[INPUT_LIMIT];
     char input[INPUT_LIMIT];
