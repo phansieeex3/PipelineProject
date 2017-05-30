@@ -93,17 +93,17 @@ TooLargeInput 	GETC
 		OUT
 		ADD R3,R0,xFFF6
 		BRnp TooLargeInput
-		LEA R0,TooManyDigits
+		LEA R0, TooManyDigits
 		PUTS
+		LD R0, NewlineChar
+		OUT
 		BRnzp NewCommand
 
-TooManyDigits 	  .FILL x000A 
-		  .STRINGZ "Too many digits"
+TooManyDigits 	  .STRINGZ "Too many digits"		  
 MaxDigits 	  .FILL x0003  
 StackBaseLocation .FILL StackBase
 ASCIIBUFFLocation .FILL ASCIIBUFF
-PromptMsg 	  .FILL x000A
-		  .STRINGZ "Enter a command: "
+PromptMsg 	  .STRINGZ "Enter a command: "
 NegX 		  .FILL XFFA8
 NegC 		  .FILL xFFBD
 NegPlus 	  .FILL XFFD5
@@ -256,11 +256,13 @@ OpDisplay 	JSR POP
 		ADD R5, R0, R3
 		BRz NewCommand
 		JSR BinarytoASCII
-		LD R0,NewlineChar
+		LD R0, NewlineChar
 		OUT
 		LEA R0, ASCIIBUFF
 		PUTS
 		ADD R6,R6,#-1
+		LD R0, NewlineChar
+		OUT
 		BRnzp NewCommand
 NewlineChar	.FILL x000A
 
@@ -275,14 +277,16 @@ POP		LEA R0,StackBase
 		RET
 Underflow 	ST R7,Save
 		LEA R0,UnderflowMsg
-		PUTS 
+		PUTS
+		LD R0, NewlineChar
+		OUT
 		LD R7, Save 
 		LD R0,  FailureValue
 		RET
 
 FailureValue    .FILL #1000
 UnderflowMsg    .FILL X000A
-		.STRINGZ "Error: Too Few Values on the Stack."
+		.STRINGZ "Error: Too Few Values on the Stack."		
 
 ASCIItoBinary   AND R0, R0, #0
 		ADD R1, R1, #0
@@ -423,6 +427,8 @@ PUSH		ST R1,Save1
 		Overflow ST R7, SavePush 
 		LEA R0,OverflowMsg
 		PUTS
+		LD R0, NewlineChar
+		OUT
 		LD R7, SavePush 
 		LD R1, Save1
 		AND R5,R5,#0
