@@ -1,6 +1,7 @@
 .ORIG x3000
 
-LEA R6, StackBase
+LD R0, StackBaseLocation
+ADD R6, R0, #0
 ADD R6,R6,#-1 
 LEA R0,PromptMsg
 PUTS
@@ -44,6 +45,15 @@ ADD R1,R1,R0
 BRnp NotDisplay
 JSR OpDisplay
 NotDisplay
+LD R1, NegMinus
+ADD R1, R0, R1
+BRnp NotMinus
+JSR OpSub
+ADD R0, R0, #0
+BRz NewCommand
+JSR PUSH
+JSR OpDisplay
+NotMinus
 BRnzp PushValue
 NewCommand LEA R0,PromptMsg
 PUTS
@@ -52,17 +62,7 @@ OUT
 BRnzp Test
 Exit HALT
 
-PromptMsg .FILL x000A
-.STRINGZ "Enter a command: "
-NegX .FILL XFFA8
-NegC .FILL xFFBD
-NegPlus .FILL XFFD5
-NegMinus .FILL XFFD3
-NegMult .FILL XFFD6
-NegD .FILL xFFBC  
-NegExl .FILL xFFDF
-
-PushValue LEA R1,ASCIIBUFF 
+PushValue LD R1, ASCIIBUFFLocation
 LD R2,MaxDigits
 ValueLoop ADD R3,R0,xFFF6 
 BRz Goodlnput
@@ -74,7 +74,7 @@ ADD R1,R1,#1
 GETC
 OUT 
 BRnzp ValueLoop
-Goodlnput LEA R2,ASCIIBUFF
+Goodlnput LD R2, ASCIIBUFFLocation
 NOT R2,R2
 ADD R2,R2,#1
 ADD R1,R1,R2 
@@ -88,9 +88,21 @@ BRnp TooLargeInput
 LEA R0,TooManyDigits
 PUTS
 BRnzp NewCommand
+
 TooManyDigits .FILL x000A
 .STRINGZ "Too many digits"
 MaxDigits .FILL x0003  
+StackBaseLocation .FILL StackBase
+ASCIIBUFFLocation .FILL ASCIIBUFF
+PromptMsg .FILL x000A
+.STRINGZ "Enter a command: "
+NegX .FILL XFFA8
+NegC .FILL xFFBD
+NegPlus .FILL XFFD5
+NegMinus .FILL XFFD3
+NegMult .FILL XFFD6
+NegD .FILL xFFBC  
+NegExl .FILL xFFDF
 
 OpAdd
 AND R4, R4, #0
@@ -132,6 +144,7 @@ ADD R7, R4, #0
 AND R0, R0, #0
 RET
 
+
 OpSub
 AND R4, R4, #0
 ADD R4, R7, R4 // R7 saved in R4
@@ -153,19 +166,19 @@ AND R0, R0, #0
 ADD R0, R3, R0
 JSR PUSH
 JSR RangeCheck
+ADD R5, R0, #0 //Save Result of Range Check
 JSR POP
-AND R4, R4, #0
-ADD R0, R0, R4
+ADD R4, R0, #0
 JSR POP
-AND R7, R7, #0
-ADD R7, R0, R7
-
-AND R0, R0, #0
-ADD R0, R3, R0
-
-BRz SubRestore2 
+ADD R7, R0, #0
+ADD R0, R4, #0
+ADD R5, R5, #0
+BRp SubRestore2 
 RET
 SubRestore2 ADD R6, R6, #-1
+ADD R6, R6, #-1
+AND R0, R0, #0
+RET
 SubRestore1 ADD R6, R6, #-1
 BRnzp ExitSub
 RET
@@ -180,6 +193,7 @@ ErrorValue .FILL #-1000
 OpClear LEA R6,StackBase
 ADD R6,R6,#-1
 BRnzp NewCommand
+
 
 OpMult 
 AND R3,R3,#0
@@ -231,10 +245,8 @@ ADD R0,R0,#1
 AND R7, R7, #0
 ADD R7, R1, #0 
 RET
-
 ExitMult //Was Succesful And A Positive Value
 RET
-
 MultRestore2 ADD R6, R6, #-1
 ADD R6, R6, #-1
 RET
@@ -242,10 +254,13 @@ MultRestore1 ADD R6, R6, #-1
 ExitMultFailure
 ADD R7, R2, #0
 RET
+
+
 Save .FILL x0300
 StackMax .BLKW 10
 StackBase .FILL x0000
 StackClose .FILL #0
+
 
 OpNeg ADD R4, R7, #0 // R7 saved in R4
 JSR POP
@@ -260,10 +275,6 @@ NegExit
 ADD R7, R4, #0 // R7 is Restored
 RET 
 
-
-
-
-
 OpDisplay JSR POP
 LD R3, ErrorValue
 ADD R5, R0, R3
@@ -276,8 +287,6 @@ PUTS
 ADD R6,R6,#-1
 BRnzp NewCommand
 NewlineChar .FILL x000A
-
-
 
 
 POP 
@@ -330,29 +339,6 @@ LDR R4, R5, #0
 ADD R0, R0, R4
 DoneAtoB RET
 
-NegASCIIOffest .FILL Xffd0
-ASCIIBUFF .BLKW 4
-LookUp10 .FILL #0
-.FILL #10
-.FILL #20
-.FILL #30
-.FILL #40
-.FILL #50
-.FILL #60
-.FILL #70
-.FILL #80
-.FILL #90
-LookUp100 .FILL #0
-.FILL #100
-.FILL #200
-.FILL #300
-.FILL #400
-.FILL #500
-.FILL #600
-.FILL #700
-.FILL #800
-.FILL #900
-
 BinarytoASCII LEA R1,ASCIIBUFF
 ADD R0,R0,#0 
 BRn NegSign
@@ -385,15 +371,39 @@ ADD R2 , R2 , R0
 STR R2,R1,#3
 RET
 
+
+NegASCIIOffest .FILL Xffd0
+ASCIIBUFF .BLKW 4
+LookUp10 .FILL #0
+.FILL #10
+.FILL #20
+.FILL #30
+.FILL #40
+.FILL #50
+.FILL #60
+.FILL #70
+.FILL #80
+.FILL #90
+LookUp100 .FILL #0
+.FILL #100
+.FILL #200
+.FILL #300
+.FILL #400
+.FILL #500
+.FILL #600
+.FILL #700
+.FILL #800
+.FILL #900
+
 RangeCheck ST R3, SAVER3
 LDR R3, R6, #0
-LD R5,Neg999
-ADD R4,R3,R5
+LD R5, Neg999
+ADD R4, R3, R5
 BRp BadRange 
 LD R5, Pos999
-ADD R4,R3,R5
+ADD R4, R3, R5
 BRn BadRange
-AND R0,R0,#0 
+AND R0, R0, #0 
 LD R3, SAVER3
 RET
 BadRange ST R7, RangeSave 
@@ -444,6 +454,7 @@ ASCIIoffset .FILL X0030
 Neg100 .FILL XFF9C
 Pos100 .FILL X0064
 Neg10 .FILL XFFF6
+
 
 
 .END
