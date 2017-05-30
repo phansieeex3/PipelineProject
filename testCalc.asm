@@ -2,7 +2,11 @@
 
 		LD R0, StackBaseLocation
 		ADD R6, R0, #0
-		ADD R6,R6,#-1 
+		ADD R6,R6,#-1
+		LD R0, HeaderInfoLocation
+		PUTS
+		LD R0, NewlineChar
+		OUT
 		LEA R0,PromptMsg
 		PUTS
 		GETC
@@ -68,7 +72,57 @@ NewCommand 	LEA R0,PromptMsg
 		BRnzp Test
 		Exit HALT
 
-NotMinus	LD R1, ASCIIBUFFLocation
+NotMinus	LD R1, NegMod
+		ADD R1, R1, R0
+		BRnp NotMod
+		JSR OpMod
+		LD R2, ErrorValue
+		ADD R3, R0, R2
+		BRz NewCommand
+		JSR PUSH
+		JSR OpDisplay
+		BRnzp NewCommand
+
+NotMod		LD R1, NegS
+		ADD R1, R1, R0
+		BRnp NotSave
+		JSR POP
+		ADD R4, R0, #0
+		LD R2, ErrorValue
+		ADD R3, R0, R2
+		BRz NewCommand
+		STI R4, SavedValuePointer 
+		LD R0, NewlineChar
+		OUT
+		BRnzp NewCommand
+
+
+
+
+NotSave		LD R1, NegL
+		ADD R1, R1, R0
+		BRnp NotLoad
+		LDI R0, SavedValuePointer 
+		LD R3, ErrorValue
+		ADD R4, R3, R0
+		BRz DisplayLoadError
+		JSR PUSH
+		ADD R4, R3, #0
+		BRp NewCommand
+		JSR POP
+		LD R0, NewlineChar
+		OUT
+		BRnzp NewCommand
+
+
+DisplayLoadError LEA R0, LoadValueErrorMessage
+		 PUTS
+		 LD R0, NewlineChar
+		 OUT
+		 BRnzp NewCommand
+		
+
+NotLoad		LD R1, ASCIIBUFFLocation
 		LD R2,MaxDigits
 		ValueLoop ADD R3,R0,xFFF6 
 		BRz Goodlnput
@@ -81,13 +135,16 @@ NotMinus	LD R1, ASCIIBUFFLocation
 		OUT 
 		BRnzp ValueLoop
 
-Goodlnput 	LD R2, ASCIIBUFFLocation
-		NOT R2,R2
-		ADD R2,R2,#1
-		ADD R1,R1,R2 
-		JSR ASCIItoBinary
-		JSR PUSH
-		BRnzp NewCommand
+Goodlnput     	LD R2, ASCIIBUFFLocation
+        	NOT R2,R2
+        	ADD R2,R2,#1
+        	ADD R0,R1,R2
+                JSR PUSH
+                LD R0, ASCIIBUFFLocation
+                JSR PUSH 
+        	JSR ASCIItoBinary
+        	JSR PUSH
+        	BRnzp NewCommand
 
 TooLargeInput 	GETC 
 		OUT
@@ -99,10 +156,10 @@ TooLargeInput 	GETC
 		OUT
 		BRnzp NewCommand
 
-TooManyDigits 	  .STRINGZ "Too many digits"		  
+TooManyDigits 	  .STRINGZ "Too many digits"
+
+		  
 MaxDigits 	  .FILL x0003  
-StackBaseLocation .FILL StackBase
-ASCIIBUFFLocation .FILL ASCIIBUFF
 PromptMsg 	  .STRINGZ "Enter a command: "
 NegX 		  .FILL XFFA8
 NegC 		  .FILL xFFBD
@@ -111,6 +168,14 @@ NegMinus	  .FILL XFFD3
 NegMult 	  .FILL XFFD6
 NegD 		  .FILL xFFBC  
 NegExl     	  .FILL xFFDF
+NegMod		  .FILL xFFDB
+NegL		  .FILL XFFB4
+NegS		  .FILL	XFFAD
+
+StackBaseLocation .FILL StackBase
+SavedValuePointer .FILL SavedValue
+LoadValueErrorMessage .STRINGZ "No Value Saved"
+HeaderInfoLocation	.FILL HeaderInfo  
 
 OpAdd		AND R4, R4, #0
 		ADD R4, R7, R4 // R7 saved in R4
@@ -139,10 +204,9 @@ OpAdd		AND R4, R4, #0
 		ADD R0, R4, #0
 		RET
 AddRestoreR7	ADD R7, R4, #0
-ExitAdd 	LD R0, FailureValue
-		RET
+ExitAdd 	RET
 
-
+NewlineChar	.FILL x000A
 
 OpSub		AND R4, R4, #0
 		ADD R4, R7, R4 // R7 saved in R4
@@ -173,14 +237,29 @@ OpSub		AND R4, R4, #0
 		ADD R0, R4, #0
 		RET
 SubRestoreR7	ADD R7, R4, #0
-ExitSub		LD R0, FailureValue
-		RET
+ExitSub		RET
 
 ErrorValue      .FILL #-1000
 
 OpClear	        LEA R6,StackBase
 		ADD R6,R6,#-1
 		BRnzp NewCommand
+
+OpDisplay 	JSR POP
+		LD R3, ErrorValue
+		ADD R5, R0, R3
+		BRz NewCommand
+		JSR BinarytoASCII
+		LD R0, NewlineChar
+		OUT
+		LEA R0, ASCIIBUFF
+		PUTS
+		ADD R6,R6,#-1
+		LD R0, NewlineChar
+		OUT
+		BRnzp NewCommand
+
+
 
 OpMult		AND R3,R3,#0
 		ADD R2, R7, #0 // R7 saved in R2
@@ -220,7 +299,7 @@ MultLoop        ADD R0,R0,R1 // The Actual Multiplication
 		ADD R7, R0, #0
 		ADD R0, R2, #0
 		ADD R4, R4, #0
-		BRp ExitMultFailure
+		BRp ExitMult
 
 		ADD R3,R3,#0
 		BRz ExitMult	// Checks to see if the sign was negitive
@@ -230,13 +309,36 @@ MultLoop        ADD R0,R0,R1 // The Actual Multiplication
 		ADD R7, R1, #0 
 		BRnzp ExitMult
 MultRestoreR7	ADD R7, R2, #0
-ExitMultFailure	LD R0, FailureValue
 ExitMult	RET
 
-Save 		.FILL x0300
-StackMax 	.BLKW 10
-StackBase 	.FILL x0000
-StackClose 	.FILL #0
+
+
+; Calculates MOD(a,m)
+; Returns a%m or an error code in R0
+; Consumes 2 operands from the stack
+OpMod 	ADD R4, R7, #0
+    	LD R3, ErrorValue
+     	JSR POP
+     	ADD R5, R0, R3
+     	BRz EXITMOD
+    	ADD R1, R0, #0
+    	JSR POP
+     	ADD R5, R0, R3
+     	BRz EXITMOD
+
+	NOT R1, R1
+     	ADD R1, R1, #1      ; Negate R1 (m)
+
+     	LOOP               ; Continue a - m until result is negative
+        	ADD R0, R0, R1
+     	BRzp LOOP
+
+     	NOT R1, R1
+     	ADD R1, R1, #1      ; Reverse negation of R1 (m)
+     	ADD R0, R0, R1     ; Reverse last subtraction
+EXITMOD	ADD R7, R4, #0
+ 	RET
+
 
 OpNeg 		ADD R4, R7, #0 // R7 saved in R4
 		JSR POP
@@ -251,50 +353,30 @@ OpNeg 		ADD R4, R7, #0 // R7 saved in R4
 NegExit 	ADD R7, R4, #0 // R7 is Restored
 		RET 
 
-OpDisplay 	JSR POP
-		LD R3, ErrorValue
-		ADD R5, R0, R3
-		BRz NewCommand
-		JSR BinarytoASCII
-		LD R0, NewlineChar
-		OUT
-		LEA R0, ASCIIBUFF
-		PUTS
-		ADD R6,R6,#-1
-		LD R0, NewlineChar
-		OUT
-		BRnzp NewCommand
-NewlineChar	.FILL x000A
 
 
-POP		LEA R0,StackBase
-		NOT R0, R0
-		ADD R0,R0,#2
-		ADD R0,R0,R6
-		BRz Underflow
-		LDR R0,R6,#0 
-		ADD R6,R6,#1
-		RET
-Underflow 	ST R7,Save
-		LEA R0,UnderflowMsg
-		PUTS
-		LD R0, NewlineChar
-		OUT
-		LD R7, Save 
-		LD R0,  FailureValue
-		RET
+
+ASCIIBUFFLocation .FILL ASCIIBUFF
 
 FailureValue    .FILL #1000
-UnderflowMsg    .FILL X000A
-		.STRINGZ "Error: Too Few Values on the Stack."		
+	
 
-ASCIItoBinary   AND R0, R0, #0
-		ADD R1, R1, #0
-		BRz DoneAtoB
 
-		LD R3, NegASCIIOffest
-		LEA R2, ASCIIBUFF
-		ADD R2, R2, R1
+
+
+
+ASCIItoBinary   ADD R4, R7, #0    ; Store R7
+        	JSR POP         ; Get Buffer Address
+        	ADD R2, R0, #0  ; Set to R2
+                JSR POP         ; Get Input Size
+                ADD R7, R4, #0  ; Restore R7
+                ADD R1, R0, #0  ; Set Input Size to R1
+        	AND R0, R0, #0  ; Set Return Value to 0
+        	ADD R1, R1, #0  ; Check R1's condition
+        	BRz DoneAtoB    ; Return a 0 if size is 0
+
+        	LD R3, NegASCIIOffest
+        	ADD R2, R2, R1
 		ADD R2, R2, #-1
 		LDR R4, R2, #0
 		ADD R4, R4, R3
@@ -321,6 +403,7 @@ ASCIItoBinary   AND R0, R0, #0
 		ADD R0, R0, R4
 
 DoneAtoB 	RET
+
 
 BinarytoASCII   LEA R1,ASCIIBUFF
 		ADD R0,R0,#0 
@@ -360,6 +443,9 @@ Beginl 		LD R2,ASCIIoffset
 		STR R2,R1,#3
 		RET
 
+StackMax 	.BLKW 10
+StackBase 	.FILL x0000
+StackClose 	.FILL #0
 
 NegASCIIOffest .FILL Xffd0
 ASCIIBUFF      .BLKW 4
@@ -407,13 +493,33 @@ BadRange 	JSR PUSH
 		LD R3, SAVER3
 		RET
 
-
+UnderflowMsg    .STRINGZ " Error: Too Few Values on the Stack."
 RangeSave       .FILL x0200
 Neg999		.FILL #-999
 Pos999		.FILL #999
 RangeErrorMsg   .FILL x000A
 		.STRINGZ "Error: Number is out of range." 
 SAVER3 		.FILL x4000
+Save 		.FILL x0300
+
+
+
+OverflowMsg     .STRINGZ "Error: Stack is Full."
+ASCIIplus       .FILL X002B
+ASCIIminus      .FILL X002D
+ASCIIoffset     .FILL X0030
+Neg100          .FILL XFF9C
+Pos100          .FILL X0064
+Neg10           .FILL XFFF6
+
+SavePush        .FILL X0000
+Save1 		.FILL X0000
+NewlineLocation .FILL NewlineChar
+FailureValueLocation .Fill FailureValue
+
+SavedValue .FILL #1000
+
+HeaderInfo .STRINGZ "Commands: Number or (+,-,*,!,%,D,S,L)"
 
 PUSH		ST R1,Save1
 		LEA R1,StackMax
@@ -427,29 +533,34 @@ PUSH		ST R1,Save1
 		Overflow ST R7, SavePush 
 		LEA R0,OverflowMsg
 		PUTS
-		LD R0, NewlineChar
+		LDI R0, NewlineLocation
 		OUT
 		LD R7, SavePush 
 		LD R1, Save1
-		AND R5,R5,#0
-		ADD R5,R5,#1
+		LDI R0,  FailureValueLocation 
+		AND R0,R0,#0
 		RET
 
-Success_exit    LD R1,Save1
-		AND R5,R5,#0
+Success_exit    LD R1,Save1		
 		RET
 
-SavePush        .FILL X0000
-Save1 		.FILL X0000
-OverflowMsg     .STRINGZ "Error: Stack is Full."
-
-ASCIIplus       .FILL X002B
-ASCIIminus      .FILL X002D
-ASCIIoffset     .FILL X0030
-Neg100          .FILL XFF9C
-Pos100          .FILL X0064
-Neg10           .FILL XFFF6
-
-
+POP		LEA R0,StackBase
+		NOT R0, R0
+		ADD R0,R0,#2
+		ADD R0,R0,R6
+		BRz Underflow
+		LDR R0,R6,#0 
+		ADD R6,R6,#1
+		RET
+Underflow 	ST R7, Save
+		LDI R0, NewlineLocation
+		OUT
+		LEA R0, UnderflowMsg
+		PUTS
+		LDI R0, NewlineLocation 
+		OUT 
+		LD R7, Save 
+		LDI R0,  FailureValueLocation 
+		RET
 
 .END
