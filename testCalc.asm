@@ -250,6 +250,8 @@ ErrorValue      .FILL #-1000
 
 OpClear	        LEA R6,StackBase
 		ADD R6,R6,#-1
+		LD R0, NewlineChar
+		OUT
 		BRnzp NewCommand
 
 OpDisplay 	JSR POP
