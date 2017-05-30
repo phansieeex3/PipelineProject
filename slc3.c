@@ -494,6 +494,14 @@ void flushPipeline(CPU_p cpu) {
     cpu->prefetch.index = MAX_PREFETCH;
 }
 
+// Flushes the pipeline before the decode phase
+// used for JMP
+void flushIF(CPU_p cpu) {
+    cpu->fbuff.pc = NOP;
+    cpu->fbuff.ir = NOP;
+    cpu->prefetch.index = MAX_PREFETCH;
+}
+
 // Flushes the whole pipeline and sets all flags and counters back
 // to their original values
 void initPipeline(CPU_p cpu) {
@@ -677,9 +685,7 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
             return FLUSH_PIPELINE;
 		case JMP:
 		    cpu->ebuff.result = cpu->dbuff.opn1;
-		    cpu->prefetch.nextPC = cpu->ebuff.result;
-			flushPipeline(cpu);
-			return FLUSH_PIPELINE;
+			break;
 		case ST:
 		case LD:
 		case STI:
@@ -704,6 +710,7 @@ int executeStep(CPU_p cpu, DEBUG_WIN_p win) {
 			    cpu->ebuff.pc = NOP;
 			} else { // Execute TRAP subroutine
 				cpu->ebuff.result = cpu->dbuff.opn1;
+				cpu->reg_file[RETURN_REG] = cpu->dbuff.pc;
 				if(trap(cpu, win, cpu->dbuff.opn1)) {
 					return HALT_PROGRAM;
 				}
@@ -856,6 +863,8 @@ void decodeStep(CPU_p cpu) {
 		case JMP:
 		    opn1 = getRegisterValue(cpu, sr);
 			opn2 = NOP;
+			cpu->prefetch.nextPC = opn1;
+			flushIF(cpu);
 			break;
 		case TRAP:
 		    opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
@@ -977,7 +986,8 @@ void decodeHandler(CPU_p cpu) {
 void fetchHandler(CPU_p cpu) {
 	// If stalled, decrement counter
 	if (cpu->stalls[P_IF]) cpu->stalls[P_IF]--;
-		
+    if (cpu->dbuff.op == JMP) return; // was flushed	
+	
     if (!cpu->stalls[P_IF]) {
          if (cpu->stalls[P_ID]) {
 			cpu->stalls[P_IF] = cpu->stalls[P_ID];
