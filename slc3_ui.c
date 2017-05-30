@@ -46,6 +46,12 @@ void printIoLabels(DEBUG_WIN_p win) {
 void updateMemory(DEBUG_WIN_p win, unsigned short* memory, unsigned short mem_index) {
      win->memAddress = mem_index;
      for (int i = 0; i < MAX_MEM; i++) {
+		if (win->memAddress + i < MEMORY_OFFSET || win->memAddress + i >= MEMORY_OFFSET + MAXMEM) {
+			mvwprintw(win->mainWin, REG_MEM_START_Y + i, MEM_LABEL_X, ERASE_REG_DISPLAY);
+            mvwprintw(win->mainWin, REG_MEM_START_Y + i, MEM_VAL_X, ERASE_REG_DISPLAY);
+			continue;
+		}
+		
         mvwprintw(win->mainWin, REG_MEM_START_Y + i, MEM_LABEL_X, HEX_OUT_LABEL, win->memAddress + i);
         mvwprintw(win->mainWin, REG_MEM_START_Y + i, MEM_VAL_X, HEX_OUT_FORMAT, memory[win->memAddress + i - MEMORY_OFFSET]);
      }

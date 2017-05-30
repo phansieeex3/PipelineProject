@@ -145,6 +145,7 @@ Joshua Meigs
 
 #define STALL_STR " S "
 #define STALL_ERS_STR "   "
+#define ERASE_REG_DISPLAY "      "
 
 // Print Main Window Labels
 void printLabels(DEBUG_WIN_p);

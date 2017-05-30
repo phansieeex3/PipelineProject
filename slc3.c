@@ -9,9 +9,31 @@
 #include "slc3.h"
 #include "slc3_ui.h"
 
-// TODO: FIX MAXMEM
-// you can define a simple memory module here for this program
+// Memory set up to be x3000 - x3FFF for this simulation
 unsigned short memory[MAXMEM];
+
+// Checks for a valid hex input and returns true if valid, false otherwise
+bool validateHexInput(char* input, DEBUG_WIN_p win) {
+    if (strlen(input) > EXPECTED_HEX_DIGITS
+	        || strlen(input) == 0
+            || input[strspn(input,"0123456789abcdefABCDEF")] != 0) {
+        displayBoldMessage(win,"Invalid Input. Press any key...");
+	    return false;	
+	}
+	
+	return true;
+}
+
+bool addressInRange(char* input, DEBUG_WIN_p win) {
+	char* temp;
+	int address = strtol(input, &temp, HEX_MODE);
+	if (address < MEMORY_OFFSET || address >= MEMORY_OFFSET + MAXMEM) {
+		displayBoldMessage(win,"Out of range. Press any key...");
+		return false;
+	}
+	
+	return true;
+}
 
 // Update Opcodes in cpu based on the sign (Negative/Zero/Positive) of val
 void updateConCodes(CPU_p cpu, short val) {
@@ -119,7 +141,7 @@ void saveToFile(char * fileName, char * start, char * end) {
 
 // Prompts user to override a file if it exists
 // Cancels save if any character other than Y or y is entered
-void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
+void saveCheckFileExists(CPU_p cpu, char *input, char * start, char * end,
         DEBUG_WIN_p win) {
 
     char * filename = input; //saving input.
@@ -154,6 +176,7 @@ void promptSaveToFile(CPU_p cpu, char *input, char * start, char * end,
     }
 
     fclose(file);
+	displayBoldMessage(win, "Save Complete. Press any key...");
 }
 
 // Prompts a user for a file to load
@@ -268,15 +291,8 @@ void save(CPU_p cpu, DEBUG_WIN_p win) {
     clearPrompt(win);
 
     // Validate address
-    if (strlen(startAddress) > EXPECTED_HEX_DIGITS
-	        || strlen(startAddress) == 0
-            || startAddress[strspn(startAddress,
-                    "0123456789abcdefABCDEF")] != 0) {
-        displayBoldMessage(win,
-                "Invalid address. Press any key...");
-		return;
-    }
-
+    if (!validateHexInput(startAddress, win) ||
+	    !addressInRange(startAddress, win)) return;
 
     // Prompt for end address (inclusive)
     clearPrompt(win);
@@ -284,32 +300,21 @@ void save(CPU_p cpu, DEBUG_WIN_p win) {
     clearPrompt(win);
 
     //Validate value
-    if (strlen(endAddress) > EXPECTED_HEX_DIGITS
-	        || strlen(endAddress) == 0
-            || endAddress[strspn(endAddress,
-                    "0123456789abcdefABCDEF")] != 0) {
-        displayBoldMessage(win,
-                "Invalid address. Press any key...");
-		return;
-    }
-
-    promptUser(win, "File name: ", input);
-	
+    if (!validateHexInput(endAddress, win) || 
+	    !addressInRange(startAddress, win)) return;
+    
+	promptUser(win, "File name: ", input);
 	if (strlen(input) == 0) {
 		displayBoldMessage(win, "Invalid file. Press any key...");
 		return;
 	}
 
-    promptSaveToFile(cpu, input, startAddress, endAddress,
+    saveCheckFileExists(cpu, input, startAddress, endAddress,
             win);
-
-    displayBoldMessage(win,
-            "Save Complete. Press any key...");
 }
 
 // Prompts users for a starting address for memory display and updates the UI
 void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
-
     int displayMemAddress = DEFAULT_MEM_ADDRESS;
     char inputAddress[INPUT_LIMIT];
     char *temp;
@@ -317,19 +322,14 @@ void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
     clearPrompt(win);
     promptUser(win, "Starting Address: ", inputAddress);
     clearPrompt(win);
+	
+    if (!validateHexInput(inputAddress, win) || 
+	    !addressInRange(inputAddress, win)) return;
+	
+	displayMemAddress = strtol(inputAddress, &temp, HEX_MODE);
+	win->memAddress = displayMemAddress;
+    updateScreen(win, cpu, memory, programLoaded);
 
-    if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
-	        || strlen(inputAddress) == 0
-            || inputAddress[strspn(inputAddress,
-                    "0123456789abcdefABCDEF")] != 0) {
-        displayBoldMessage(win,
-                "Invalid address. Press any key...");
-    } else {
-        displayMemAddress = strtol(inputAddress, &temp,
-                HEX_MODE);
-        win->memAddress = displayMemAddress;
-        updateScreen(win, cpu, memory, programLoaded);
-    }
 }
 
 // Prompts the user for an address to edit and a value to place in memory at that address
@@ -347,14 +347,8 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
     clearPrompt(win);
 
     // Validate address
-    if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
-	        || strlen(inputAddress) == 0
-            || inputAddress[strspn(inputAddress,
-                    "0123456789abcdefABCDEF")] != 0) {
-        displayBoldMessage(win,
-                "Invalid address. Press any key...");
-		return;
-    }
+    if (!validateHexInput(inputAddress, win) || 
+	    !addressInRange(inputAddress, win)) return;
 
     // Prompt for new value to place into memory
     clearPrompt(win);
@@ -362,14 +356,7 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
     clearPrompt(win);
 
     // Validate value
-    if (strlen(input) > EXPECTED_HEX_DIGITS
-	        || strlen(input) == 0
-            || input[strspn(input, "0123456789abcdefABCDEF")]
-                    != 0) {
-        displayBoldMessage(win,
-                "Invalid value. Press any key...");
-		return;
-    }
+    if (!validateHexInput(input, win)) return;
 
     // Update Memory
     displayMemAddress = strtol(inputAddress, &temp,
@@ -398,14 +385,8 @@ void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char progr
     clearPrompt(win);
 
     // Validate address
-    if (strlen(inputAddress) > EXPECTED_HEX_DIGITS
-	        || strlen(inputAddress) == 0
-            || inputAddress[strspn(inputAddress,
-                    "0123456789abcdefABCDEF")] != 0) {
-        displayBoldMessage(win,
-                "Invalid address. Press any key...");
-	    return;
-    }
+    if (!validateHexInput(inputAddress, win) || 
+	    !addressInRange(inputAddress, win)) return;
     
     modifyBreakPoint(win, breakpoints, inputAddress);
 

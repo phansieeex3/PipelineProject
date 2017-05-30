@@ -71,7 +71,7 @@ Joshua Meigs
 #define HALT 0x0025
 
 // Constants
-#define MAXMEM 4096 // 0x3000 - 0x3FFF
+#define MAXMEM 0x1000 // 0x3000 - 0x3FFF
 #define MEMORY_OFFSET 0x3000
 #define HEX_MODE 16
 #define EXPECTED_HEX_DIGITS 4
@@ -214,6 +214,9 @@ typedef struct {
 
 typedef DEBUG_WIN_s* DEBUG_WIN_p;
 
+// Checks for a valid hex input and returns true if valid, false otherwise
+bool validateHexInput(char*, DEBUG_WIN_p);
+
 // Update Opcodes in cpu based on the sign (Negative/Zero/Positive) of val
 void updateConCodes(CPU_p, short);
 
@@ -231,7 +234,7 @@ void saveToFile(char *, char *, char *);
 
 // Prompts user to override a file if it exists
 // Cancels save if any character other than Y or y is entered
-void promptSaveToFile(CPU_p, char *, char *, char *, DEBUG_WIN_p);
+void saveCheckFileExists(CPU_p, char *, char *, char *, DEBUG_WIN_p);
 
 // Prompts a user for a file to load
 // if the file does not exists reports an error
