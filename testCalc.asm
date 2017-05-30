@@ -125,7 +125,7 @@ DisplayLoadError LEA R0, LoadValueErrorMessage
 
 NotLoad		LD R1, ASCIIBUFFLocation
 		LD R2,MaxDigits
-		ValueLoop ADD R3,R0,xFFF6 
+ValueLoop       ADD R3,R0,xFFF6 
 		BRz Goodlnput
 		ADD R2,R2,#0
 		BRz TooLargeInput
@@ -201,14 +201,15 @@ OpAdd		AND R4, R4, #0
 		ADD R0, R3, #0
 		JSR PUSH
 		JSR RangeCheck
-		ADD R3, R0, #0
-		JSR POP
-		ADD R4, R0, #0
+		ADD R5, R0, #0
+		//JSR POP
+		//ADD R4, R0, #0
 		JSR POP
 		ADD R7, R0, #0 
-		ADD R3, R3, #0
-		BRp ExitAdd
-		ADD R0, R4, #0
+		ADD R0, R5, #0
+                //ADD R5, R0, R3
+		//BRp ExitAdd
+		//ADD R0, R4, #0
 		RET
 AddRestoreR7	ADD R7, R4, #0
 ExitAdd 	RET
@@ -235,13 +236,13 @@ OpSub		AND R4, R4, #0
 		JSR PUSH
 		JSR RangeCheck
 		ADD R3, R0, #0
-		JSR POP
-		ADD R4, R0, #0
+		//JSR POP
+		//ADD R4, R0, #0
 		JSR POP
 		ADD R7, R0, #0 
-		ADD R3, R3, #0
-		BRp ExitSub
-		ADD R0, R4, #0
+		ADD R0, R3, #0
+		//BRp ExitSub
+		//ADD R0, R4, #0
 		RET
 SubRestoreR7	ADD R7, R4, #0
 ExitSub		RET
@@ -280,12 +281,12 @@ OpMult		AND R3,R3,#0
 		JSR POP
 		ADD R5,R0, R4 
 		BRz MultRestoreR7
-		ADD R4, R2, #0 //R7 Saved in R4
-		ADD R2,R0,#0 
+                ADD R4, R2, #0 //R7 Saved in R4
+		ADD R2, R0, #0 
 		BRzp PosMultiplier
-		ADD R3,R3,#1 
+		ADD R3, R3, #1 
 		NOT R2, R2
-		ADD R2,R2,#1 
+		ADD R2, R2, #1 
 
 PosMultiplier   AND R0,R0,#0 
 		ADD R2,R2,#0
@@ -301,21 +302,22 @@ MultLoop        ADD R0,R0,R1 // The Actual Multiplication
 		ADD R0, R1, #0
 		JSR PUSH
 		JSR RangeCheck
-		ADD R4, R0, #0 //Store result of Range Check
-		JSR POP
-		ADD R2, R0, #0
+		ADD R5, R0, #0 //Store result of Range Check
+		//JSR POP
+		//ADD R2, R0, #0
 		JSR POP
 		ADD R7, R0, #0
-		ADD R0, R2, #0
-		ADD R4, R4, #0
-		BRp ExitMult
+		ADD R0, R5, #0
+                LD R4, ErrorValue
+		ADD R5, R0, R4
+		BRz ExitMult
 
 		ADD R3,R3,#0
 		BRz ExitMult	// Checks to see if the sign was negitive
 
 		NOT R0, R0 //Is a Negitive sign
 		ADD R0,R0,#1
-		ADD R7, R1, #0 
+		//ADD R7, R1, #0 
 		BRnzp ExitMult
 MultRestoreR7	ADD R7, R2, #0
 ExitMult	RET
@@ -488,17 +490,20 @@ RangeCheck     	ST R3, SAVER3
 		LD R5, Pos999
 		ADD R4, R0, R5
 		BRn BadRange
-		JSR PUSH
-		AND R0, R0, #0 
+		// JSR PUSH
+		// AND R0, R0, #0 
 		ADD R7, R1, #0
 		LD R3, SAVER3
 		RET
-BadRange 	JSR PUSH 
-		LEA R0,RangeErrorMsg
-		TRAP x22 
+BadRange 	//JSR PUSH 
+                LEA R0,RangeErrorMsg
+		TRAP x22
+                LDI R0, NewlineLocation
+		OUT 
 		ADD R7, R1, #0
-		AND R0,R0,#0
-		ADD R0,R0,#1
+		//AND R0,R0,#0
+		//ADD R0,R0,#1
+                LDI R0, FailureValueLocation
 		LD R3, SAVER3
 		RET
 
@@ -539,7 +544,7 @@ PUSH		ST R1,Save1
 		ADD R6,R6,#-1
 		STR R0,R6,#0
 		BRnzp Success_exit
-		Overflow ST R7, SavePush 
+Overflow        ST R7, SavePush 
 
 		LEA R0,OverflowMsg
 		PUTS
@@ -547,7 +552,7 @@ PUSH		ST R1,Save1
 		OUT
 		LD R7, SavePush 
 		LD R1, Save1
-		LDI R0,  FailureValueLocation 
+		LDI R0, FailureValueLocation 
 		RET
 
 Success_exit    LD R1,Save1		
