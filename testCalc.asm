@@ -107,11 +107,12 @@ NotSave		LD R1, NegL
 		ADD R4, R3, R0
 		BRz DisplayLoadError
 		JSR PUSH
-		ADD R4, R3, #0
-		BRp NewCommand
-		JSR POP
+		ADD R4, R3, R0
 		LD R0, NewlineChar
 		OUT
+		ADD R4, R4, #0
+		BRnp NewCommand
+		JSR POP
 		BRnzp NewCommand
 
 
@@ -140,8 +141,14 @@ Goodlnput     	LD R2, ASCIIBUFFLocation
         	ADD R2,R2,#1
         	ADD R0,R1,R2
                 JSR PUSH
+		LD R3, ErrorValue
+		ADD R3, R3, R0
+		BRz NewCommand
                 LD R0, ASCIIBUFFLocation
-                JSR PUSH 
+                JSR PUSH
+		LD R3, ErrorValue
+		ADD R3, R3, R0
+		BRz NewCommand
         	JSR ASCIItoBinary
         	JSR PUSH
         	BRnzp NewCommand
@@ -531,6 +538,7 @@ PUSH		ST R1,Save1
 		STR R0,R6,#0
 		BRnzp Success_exit
 		Overflow ST R7, SavePush 
+
 		LEA R0,OverflowMsg
 		PUTS
 		LDI R0, NewlineLocation
@@ -538,7 +546,6 @@ PUSH		ST R1,Save1
 		LD R7, SavePush 
 		LD R1, Save1
 		LDI R0,  FailureValueLocation 
-		AND R0,R0,#0
 		RET
 
 Success_exit    LD R1,Save1		
