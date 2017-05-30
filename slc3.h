@@ -225,9 +225,9 @@ void updateConCodes(CPU_p, short);
 bool trap(CPU_p, DEBUG_WIN_p, Register);
 
 // Loads a hex file into the memory of the controller
-char loadFileIntoMemory(FILE *, CPU_p);
+bool loadFileIntoMemory(FILE *, CPU_p);
 
-char loadFile(char *, CPU_p);
+bool loadFile(char *, CPU_p);
 
 // Outputs the selected section of memory to the specified file
 void saveToFile(char *, char *, char *);
@@ -238,7 +238,7 @@ void saveCheckFileExists(CPU_p, char *, char *, char *, DEBUG_WIN_p);
 
 // Prompts a user for a file to load
 // if the file does not exists reports an error
-char load(CPU_p, unsigned short *, DEBUG_WIN_p);
+bool load(CPU_p, unsigned short *, DEBUG_WIN_p);
 
 // Initializes all stall counters to zero for the pipeline
 void initStall(CPU_p);
@@ -264,15 +264,15 @@ void initBreakPoints(BREAKPOINT_p);
 void save(CPU_p, DEBUG_WIN_p);
 
 // Prompts users for a starting address for memory display and updates the UI
-void displayMemory(CPU_p, DEBUG_WIN_p, char);
+void displayMemory(CPU_p, DEBUG_WIN_p, bool);
 
 // Prompts the user for an address to edit and a value to place in memory at that address
 // Updates memory based on user input, or returns without editing if invalid values are
 // entered.
-void edit(CPU_p, DEBUG_WIN_p, char, unsigned short *);
+void edit(CPU_p, DEBUG_WIN_p, bool, unsigned short *);
 
 // Prompts the user for and address to add or remove from breakpoints.
-void breakPoint(CPU_p, DEBUG_WIN_p, BREAKPOINT_p, char);
+void breakPoint(CPU_p, DEBUG_WIN_p, BREAKPOINT_p, bool);
 
 // Checks the specified buffer for OP codes that will update a register
 // returns true if found, false otherwise

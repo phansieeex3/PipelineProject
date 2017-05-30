@@ -85,7 +85,7 @@ bool trap(CPU_p cpu, DEBUG_WIN_p win, Register vector) {
 }
 
 // Loads a hex file into the memory of the controller
-char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
+bool loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
     char * t;
     int temp;
     char line[MAX_INPUT_SIZE];
@@ -111,7 +111,7 @@ char loadFileIntoMemory(FILE * theInFile, CPU_p cpu) {
     return true;
 }
 
-char loadFile(char * theInFile, CPU_p cpu) {
+bool loadFile(char * theInFile, CPU_p cpu) {
     FILE * inFile = fopen(theInFile, "r");
 
     if (!inFile) {      
@@ -181,17 +181,15 @@ void saveCheckFileExists(CPU_p cpu, char *input, char * start, char * end,
 
 // Prompts a user for a file to load
 // if the file does not exists reports an error
-char load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win) {
+bool load(CPU_p cpu, unsigned short * memory, DEBUG_WIN_p win) {
     char input[INPUT_LIMIT];
-    char programLoaded;
-    short orig = DEFAULT_MEM_ADDRESS;
+    bool programLoaded;
 
     promptUser(win, "File Name: ", input);
     programLoaded = loadFile(input, cpu);
     if (programLoaded) {
         win->memAddress = cpu->pc;
-        orig = cpu->pc;
-        
+        initBreakPoints(win->breakpoints);
         updateScreen(win, cpu, memory, programLoaded);
         printIoLabels(win);
         clearPrompt(win);
@@ -314,7 +312,7 @@ void save(CPU_p cpu, DEBUG_WIN_p win) {
 }
 
 // Prompts users for a starting address for memory display and updates the UI
-void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
+void displayMemory(CPU_p cpu, DEBUG_WIN_p win, bool programLoaded) {
     int displayMemAddress = DEFAULT_MEM_ADDRESS;
     char inputAddress[INPUT_LIMIT];
     char *temp;
@@ -335,7 +333,7 @@ void displayMemory(CPU_p cpu, DEBUG_WIN_p win, char programLoaded) {
 // Prompts the user for an address to edit and a value to place in memory at that address
 // Updates memory based on user input, or returns without editing if invalid values are
 // entered.
-void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memory) {
+void edit(CPU_p cpu, DEBUG_WIN_p win, bool programLoaded, unsigned short * memory) {
     char *temp;
     char inputAddress[INPUT_LIMIT];
     char input[INPUT_LIMIT];
@@ -377,7 +375,7 @@ void edit(CPU_p cpu, DEBUG_WIN_p win, char programLoaded, unsigned short * memor
 }
 
 // Prompts the user for and address to add or remove from breakpoints.
-void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, char programLoaded)
+void breakPoint(CPU_p cpu, DEBUG_WIN_p win, BREAKPOINT_p breakpoints, bool programLoaded)
 {
     char inputAddress[INPUT_LIMIT];
     clearPrompt(win);
@@ -1072,10 +1070,8 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
     if (!cpu) return NULL_CPU_POINTER;
     if (!memory) return NULL_MEMORY_POINTER;
 
-
-    int displayMemAddress = DEFAULT_MEM_ADDRESS;
     short orig = DEFAULT_MEM_ADDRESS;    
-    char programLoaded = false;
+    bool programLoaded = false;
     char input[INPUT_LIMIT];
     
     
@@ -1093,7 +1089,10 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
             switch(input[MENU_SELECTION]) {
 				case LOAD:
 					programLoaded = load(cpu, memory, win);
-					initPipeline(cpu);
+					if (programLoaded) {
+						orig = cpu->pc;
+						initPipeline(cpu);
+					}
 					break;
 				case SAVE:
 					save(cpu, win);
@@ -1101,10 +1100,13 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 				case STEP:
 					if (programLoaded) {
 						programLoaded = controller_pipelined(cpu, win, STEP_MODE, breakpoints);
-						cpu->pc = getNextInstrToFinish(cpu);
-						if (displayMemAddress+15 < cpu->pc || cpu->pc < displayMemAddress) { 
-							displayMemAddress = cpu->pc;
-						    win->memAddress = displayMemAddress;
+						if (programLoaded) {
+							cpu->pc = getNextInstrToFinish(cpu);
+							if (win->memAddress+MAX_MEM <= cpu->pc || cpu->pc < win->memAddress) { 
+								win->memAddress = cpu->pc;
+							}
+						} else {
+							win->memAddress = orig;
 						}
 					} else {
 						displayBoldMessage(win, "No program loaded! Press any key...");
@@ -1112,12 +1114,25 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 					break;
 				case RUN:
 					if (programLoaded) {
-						programLoaded = controller_pipelined(cpu, win, RUN_MODE, breakpoints);
-						cpu->pc = getNextInstrToFinish(cpu);
-						if (displayMemAddress+15 < cpu->pc || cpu->pc < displayMemAddress) {
-							displayMemAddress = cpu->pc;
-						    win->memAddress = displayMemAddress;
+						// Step over a breakpoint and then run if the program is still loaded
+						if (breakpointsReached(win, cpu->pc)) {
+							programLoaded = controller_pipelined(cpu, win, STEP_MODE, breakpoints);
+							cpu->pc = getNextInstrToFinish(cpu);
 						}
+						
+						if (!breakpointsReached(win, cpu->pc) && programLoaded) {
+							programLoaded = controller_pipelined(cpu, win, RUN_MODE, breakpoints); 
+						}
+						
+						if (programLoaded) { 
+							cpu->pc = getNextInstrToFinish(cpu);
+							if (win->memAddress+MAX_MEM <= cpu->pc || cpu->pc < win->memAddress) {
+						        win->memAddress = cpu->pc;
+							}
+						} else {
+							win->memAddress = orig;
+						}
+						
 					} else {
 						displayBoldMessage(win, "No program loaded! Press any key...");
 					}
@@ -1142,7 +1157,9 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 				default: 
 					displayBoldMessage(win, "Invalid Menu Option");
             }
-        }
+        } else {
+			displayBoldMessage(win, "Invalid Menu Option");
+		}
 
     } //end for loop
 }
