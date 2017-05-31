@@ -92,7 +92,7 @@ void printBreakPoint(DEBUG_WIN_p win, CPU_p cpu) {
         offset =  win->breakpoints->breakpointArr[i] - win->memAddress;
         if(offset >= 0 && offset < MAX_MEM) {
             wattron(win->mainWin, A_STANDOUT); 
-            mvwprintw(win->mainWin, REG_MEM_START_Y + offset, ARROW_X+1, "O");//such magic
+            mvwprintw(win->mainWin, REG_MEM_START_Y + offset, ARROW_X+1, "O");
             wattroff(win->mainWin, A_STANDOUT);          
         } 
     }
