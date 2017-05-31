@@ -1134,6 +1134,9 @@ int monitor(CPU_p cpu, DEBUG_WIN_p win) {
 							if (win->memAddress+MAX_MEM <= cpu->pc || cpu->pc < win->memAddress) {
 						        win->memAddress = cpu->pc;
 							}
+							if (breakpointsReached(win, cpu->pc)) {
+								displayBoldMessage(win, "Breakpoint! Press any key...");
+							}
 						} else {
 							win->memAddress = orig;
 						}
