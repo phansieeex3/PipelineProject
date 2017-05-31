@@ -305,6 +305,7 @@ void updateMBuffer(DEBUG_WIN_p win, CPU_p cpu){
 				break;
 			case LD:
 			case LEA:
+			case LDI:
 				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: DR: LDVAL:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.dr));
@@ -312,6 +313,7 @@ void updateMBuffer(DEBUG_WIN_p win, CPU_p cpu){
 				printBox(win, MBUFF_BOARDER, THREE_LABEL_WIDTH);
 				break;
 			case ST:
+			case STI:
 				mvwprintw(win->mainWin, MBUFF_LBL_START_Y, OP_LBL_X, "OP: SRV: PC+OFS:");
 				mvwprintw(win->mainWin, MBUFF_OP_VAL_Y_X, HEX_OUT_SINGLE, MOD16(cpu->mbuff.op));
                 mvwprintw(win->mainWin, MBUFF_DR_VAL_Y_X-1, HEX_OUT_FORMAT, cpu->mbuff.dr);
