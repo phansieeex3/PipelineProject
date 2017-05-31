@@ -591,12 +591,16 @@ void memoryStep(CPU_p cpu, bool finish) {
 			} 
 			break;
         case RSV:
-            if (!cpu->ebuff.imb) {
-                memory[cpu->reg_file[SP_REG]-1- MEMORY_OFFSET] = cpu->ebuff.result; 
-            } else {
-                cpu->mbuff.result = memory[cpu->reg_file[SP_REG]- MEMORY_OFFSET];
-            }
-            cpu->mbuff.imb = cpu->ebuff.imb;
+            if(finish) {
+				if (!cpu->ebuff.imb) {
+					memory[cpu->reg_file[SP_REG]-1-MEMORY_OFFSET] = cpu->ebuff.result; 
+				} else {
+					cpu->mbuff.result = memory[cpu->reg_file[SP_REG]- MEMORY_OFFSET];
+				}
+				cpu->mbuff.imb = cpu->ebuff.imb;
+			} else {
+				cpu->stalls[P_MEM] = MEMORY_ACCESS_STALL_TIME;
+			}
         break; 
     } 
 
@@ -749,7 +753,6 @@ Register getRegisterValue(CPU_p cpu, Register reg) {
 	if (containsHazard(cpu->ebuff, reg)) {
 		regValue = fowardExecuteData(cpu);
 	} else if (containsHazard(cpu->mbuff, reg)) {
-	    // TODO use MDR instead once implemented
 		regValue = cpu->mbuff.result;	
 	} else {
 		regValue = cpu->reg_file[reg];
@@ -843,7 +846,6 @@ void decodeStep(CPU_p cpu) {
 		    opn1 = getRegisterValue(cpu, sr);
 			opn2 = NOP;
 			cpu->prefetch.nextPC = opn1;
-			flushIF(cpu);
 			break;
 		case TRAP:
 		    opn1 = ZEXTTRAPVECT(cpu->fbuff.ir);
@@ -874,6 +876,9 @@ void decodeStep(CPU_p cpu) {
             cpu->dbuff.opn2 = opn2;
     }
     
+	// flush pipeline after to properly push values forward
+	if ((Register)OPCODE(cpu->fbuff.ir) == JMP) flushIF(cpu);
+	
 }
 
 // Checks for stall signals and handles the stall counter before
